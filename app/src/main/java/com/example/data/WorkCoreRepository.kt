@@ -5,7 +5,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import com.example.data.firebase.FirebaseDataSource
+import com.example.data.firebase.EodHistoryQueryResult
+import com.google.firebase.firestore.DocumentSnapshot
 import java.text.SimpleDateFormat
+
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -1080,8 +1083,9 @@ class WorkCoreRepository(
     limit: Long = 50,
     startAfterDoc: com.google.firebase.firestore.DocumentSnapshot? = null
   ): Result<com.example.data.firebase.EodHistoryQueryResult> {
+    val fds = firebaseDataSource ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
     val (startDate, endDate) = calculateDateRange(filterType, customStart, customEnd)
-    return firebaseDataSource.fetchEodHistoryFromFirestore(
+    return fds.fetchEodHistoryFromFirestore(
       startDate = startDate,
       endDate = endDate,
       employeeId = employeeId,
@@ -1090,4 +1094,5 @@ class WorkCoreRepository(
     )
   }
 }
+
 
