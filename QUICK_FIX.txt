@@ -1,0 +1,101 @@
+╔════════════════════════════════════════════════════════════════╗
+║                  🔧 FIX DATABASE NOT SHOWING                   ║
+║                        (30 SECONDS FIX)                        ║
+╚════════════════════════════════════════════════════════════════╝
+
+📱 ON YOUR ANDROID PHONE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  Open Settings
+     ↓
+2️⃣  Tap "Apps" (or "Application Manager")
+     ↓
+3️⃣  Find "WorkCore" in the list
+     ↓
+4️⃣  Tap "WorkCore"
+     ↓
+5️⃣  Tap "Storage" (or "Storage & cache")
+     ↓
+6️⃣  Tap "Clear data" (or "Clear storage")
+     ↓
+7️⃣  Confirm "OK"
+
+✅ DONE! The old database is now deleted.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💻 ON YOUR COMPUTER (Android Studio):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  In Android Studio, click: Build → Rebuild Project
+
+2️⃣  Wait for build to finish (check progress at bottom)
+
+3️⃣  Click the green "Run" button (▶️) or press Shift+F10
+
+4️⃣  App installs on your phone automatically
+
+✅ DONE! Fresh database will auto-create with all data.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧪 TEST THE FIX:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Open WorkCore app → Login screen appears
+
+🔐 Admin Login Test:
+    Username: admin
+    Password: admin123
+    
+    ✓ Dashboard should show departments
+    ✓ Select "GT Team" from dropdown
+    ✓ Should show "5 team members"
+
+🔐 Employee Login Test:
+    1. Select: GT Team
+    2. Employee ID: GT-001
+    3. Password: password123
+    
+    ✓ Should show GT Team roster
+    ✓ Should see 5 employees:
+      - Deepak Kumar
+      - Nisha Reddy
+      - Arjun Joseph
+      - Pooja Thomas
+      - Vikram Singh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ STILL NOT WORKING?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Check Android Studio Logcat (bottom panel):
+🔍 Filter: "WorkCoreRepository"
+
+Look for these messages:
+  ✅ DATABASE INITIALIZED SUCCESSFULLY!
+  ✅ GT Team employees: 5 employees
+  
+If you see these → Database is loaded!
+If NOT → Share the logcat output with me.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 WHAT CHANGED IN CODE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Database version: 6 → 8 (forces fresh rebuild)
+✓ Added detailed logging to track initialization
+✓ Enhanced seed data loading with progress messages
+
+Files modified:
+  - AppDatabase.kt (version bump + logging)
+  - WorkCoreRepository.kt (detailed init logs)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 SUMMARY:
+Clear phone app data → Rebuild in Android Studio → Run → Test login
+
+That's it! Your database will show all employees. ✨

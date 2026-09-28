@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "266017907285",
+    "project_id": "eod-management",
+    "storage_bucket": "eod-management.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:266017907285:android:ebbb80311232fbce756adc",
+        "android_client_info": {
+          "package_name": "com.aistudio.workcore.kpmz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD61sZhqVV4hV6HLH9yfLNkOyna85mVITo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

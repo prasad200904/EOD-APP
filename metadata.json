@@ -1,0 +1,7 @@
+{
+  "name": "WorkCore",
+  "description": "Enterprise daily EOD management with roster-based department access, unified team history, and role-scoped report downloads.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

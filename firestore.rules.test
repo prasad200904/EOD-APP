@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // WIDE OPEN FOR TESTING - This allows all reads and writes
+    // Use this to test if sync works, then switch to secure rules
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

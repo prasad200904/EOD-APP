@@ -1,0 +1,107 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && getUserData().role == 'ADMIN';
+    }
+    
+    function isEmployee() {
+      return isSignedIn() && getUserData().role == 'EMPLOYEE';
+    }
+    
+    function isOwner(employeeId) {
+      return isSignedIn() && getUserData().employeeId == employeeId;
+    }
+    
+    function isActiveUser() {
+      return isSignedIn() && getUserData().isActive == true;
+    }
+    
+    // Users collection - profiles linked to Firebase Auth
+    match /users/{userId} {
+      // Users can read their own profile, admins can read all
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      
+      // Only the user themselves or admin can create/update their profile
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // EOD Submissions collection
+    match /eod_submissions/{submissionId} {
+      // Everyone authenticated can read EODs (for team visibility and analytics)
+      allow read: if isSignedIn() && isActiveUser();
+      
+      // Employees can create their own EODs, admins can create any
+      allow create: if isSignedIn() && isActiveUser() && 
+                      (isOwner(request.resource.data.employeeId) || isAdmin());
+      
+      // Employees can update their own EODs, admins can update any
+      allow update: if isSignedIn() && isActiveUser() && 
+                      (isOwner(resource.data.employeeId) || isAdmin());
+      
+      // Only admins can delete EODs
+      allow delete: if isAdmin();
+    }
+    
+    // Employees collection
+    match /employees/{employeeId} {
+      // All authenticated users can read employee data (for directory and team views)
+      allow read: if isSignedIn() && isActiveUser();
+      
+      // Only admins can create new employees
+      allow create: if isAdmin();
+      
+      // Admins can update any employee, employees can update limited fields of their own profile
+      allow update: if isSignedIn() && isActiveUser() && 
+                      (isAdmin() || 
+                       (isOwner(employeeId) && 
+                        onlyUpdatingAllowedFields(['phone', 'defaultProject'])));
+      
+      // Only admins can delete employees
+      allow delete: if isAdmin();
+    }
+    
+    // Departments collection
+    match /departments/{departmentId} {
+      // All authenticated users can read departments
+      allow read: if isSignedIn() && isActiveUser();
+      
+      // Only admins can create, update, or delete departments
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Teams collection
+    match /teams/{teamId} {
+      // All authenticated users can read teams
+      allow read: if isSignedIn() && isActiveUser();
+      
+      // Only admins can create, update, or delete teams
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Helper function to check if only allowed fields are being updated
+    function onlyUpdatingAllowedFields(allowedFields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
