@@ -737,7 +737,76 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     }
   }
 
+  // History Query & Filter States
+  val historyFilterType = MutableStateFlow("This month") // "This month", "Previous month", "Custom date range"
+  val historyCustomStart = MutableStateFlow("")
+  val historyCustomEnd = MutableStateFlow("")
+  val historyEmployeeFilter = MutableStateFlow("All")
+  val historyIsLoading = MutableStateFlow(false)
+  val historyErrorMessage = MutableStateFlow<String?>(null)
+  val historyEodList = MutableStateFlow<List<DailyEodEntity>>(emptyList())
+  val historyHasMore = MutableStateFlow(false)
+  val historyLastDoc = MutableStateFlow<com.google.firebase.firestore.DocumentSnapshot?>(null)
+
+  fun loadEodHistory(reset: Boolean = true) {
+    viewModelScope.launch {
+      if (reset) {
+        historyLastDoc.value = null
+        historyEodList.value = emptyList()
+      }
+
+      // Requirement 9: Validate start date <= end date for custom range
+      if (historyFilterType.value == "Custom date range") {
+        val s = historyCustomStart.value.trim()
+        val e = historyCustomEnd.value.trim()
+        if (s.isNotBlank() && e.isNotBlank() && s > e) {
+          historyErrorMessage.value = "Start date ($s) cannot be after end date ($e)."
+          return@launch
+        }
+      }
+
+      historyIsLoading.value = true
+      historyErrorMessage.value = null
+
+      val empId = if (currentRole.value == Role.ADMIN) {
+        if (historyEmployeeFilter.value == "All") null else historyEmployeeFilter.value
+      } else {
+        currentEmployeeId.value
+      }
+
+      val res = repository.fetchEodHistoryFromCloud(
+        filterType = historyFilterType.value,
+        customStart = historyCustomStart.value.ifBlank { null },
+        customEnd = historyCustomEnd.value.ifBlank { null },
+        employeeId = empId,
+        limit = 50,
+        startAfterDoc = if (reset) null else historyLastDoc.value
+      )
+
+      historyIsLoading.value = false
+
+      res.onSuccess { queryResult ->
+        if (reset) {
+          historyEodList.value = queryResult.items
+        } else {
+          historyEodList.value = historyEodList.value + queryResult.items
+        }
+        historyLastDoc.value = queryResult.lastDocumentSnapshot
+        historyHasMore.value = queryResult.hasMore
+      }.onFailure { err ->
+        historyErrorMessage.value = err.message ?: "Failed to fetch EOD history from Firestore."
+      }
+    }
+  }
+
+  fun loadMoreEodHistory() {
+    if (!historyIsLoading.value && historyHasMore.value) {
+      loadEodHistory(reset = false)
+    }
+  }
+
   fun clearSnackbar() {
     snackbarMessage.value = null
   }
 }
+

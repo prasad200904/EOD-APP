@@ -1028,4 +1028,66 @@ class WorkCoreRepository(
   ): String {
     return generateCsvReport(reportScope, employees, eods, metrics)
   }
+
+  fun calculateDateRange(filterType: String, customStart: String? = null, customEnd: String? = null): Pair<String, String> {
+    val cal = Calendar.getInstance()
+    return when (filterType) {
+      "This month" -> {
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH) + 1
+        val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val startDate = String.format(Locale.US, "%04d-%02d-01 00:00:00", year, month)
+        val endDate = String.format(Locale.US, "%04d-%02d-%02d 23:59:59", year, month, maxDay)
+        Pair(startDate, endDate)
+      }
+      "Previous month" -> {
+        cal.add(Calendar.MONTH, -1)
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH) + 1
+        val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val startDate = String.format(Locale.US, "%04d-%02d-01 00:00:00", year, month)
+        val endDate = String.format(Locale.US, "%04d-%02d-%02d 23:59:59", year, month, maxDay)
+        Pair(startDate, endDate)
+      }
+      "Custom date range" -> {
+        val s = if (!customStart.isNullOrBlank()) {
+          if (customStart.contains(" ")) customStart else "$customStart 00:00:00"
+        } else "2024-01-01 00:00:00"
+
+        val e = if (!customEnd.isNullOrBlank()) {
+          if (customEnd.contains(" ")) customEnd else "$customEnd 23:59:59"
+        } else "2030-12-31 23:59:59"
+
+        Pair(s, e)
+      }
+      else -> Pair("2024-01-01 00:00:00", "2030-12-31 23:59:59")
+    }
+  }
+
+  suspend fun fetchEodHistoryFromCloud(
+    filterType: String,
+    customStart: String? = null,
+    customEnd: String? = null,
+    employeeId: String? = null,
+    limit: Long = 50,
+    startAfterDoc: com.google.firebase.firestore.DocumentSnapshot? = null
+  ): Result<com.example.data.firebase.EodHistoryQueryResult> {
+    val (startDate, endDate) = calculateDateRange(filterType, customStart, customEnd)
+    return firebaseDataSource.fetchEodHistoryFromFirestore(
+      startDate = startDate,
+      endDate = endDate,
+      employeeId = employeeId,
+      limit = limit,
+      startAfterDoc = startAfterDoc
+    )
+  }
 }
+

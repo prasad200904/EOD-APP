@@ -448,5 +448,94 @@ class FirebaseDataSource(private val context: Context) {
       onUpdate(list)
     }
   }
+
+  suspend fun fetchEodHistoryFromFirestore(
+    startDate: String,
+    endDate: String,
+    employeeId: String? = null,
+    limit: Long = 50,
+    startAfterDoc: com.google.firebase.firestore.DocumentSnapshot? = null
+  ): Result<EodHistoryQueryResult> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      var query: com.google.firebase.firestore.Query = db.collection("eodReports")
+
+      if (!employeeId.isNullOrBlank() && !employeeId.equals("All", ignoreCase = true)) {
+        query = query.whereEqualTo("employeeId", employeeId)
+      }
+
+      query = query.whereGreaterThanOrEqualTo("date", startDate)
+        .whereLessThanOrEqualTo("date", endDate)
+        .orderBy("date", com.google.firebase.firestore.Query.Direction.DESCENDING)
+        .limit(limit)
+
+      if (startAfterDoc != null) {
+        query = query.startAfter(startAfterDoc)
+      }
+
+      var snapshot = query.get().await()
+
+      // Fallback: If eodReports is empty, query eod_submissions
+      if (snapshot.isEmpty) {
+        var fallbackQuery: com.google.firebase.firestore.Query = db.collection("eod_submissions")
+        if (!employeeId.isNullOrBlank() && !employeeId.equals("All", ignoreCase = true)) {
+          fallbackQuery = fallbackQuery.whereEqualTo("employeeId", employeeId)
+        }
+        fallbackQuery = fallbackQuery.whereGreaterThanOrEqualTo("date", startDate)
+          .whereLessThanOrEqualTo("date", endDate)
+          .orderBy("date", com.google.firebase.firestore.Query.Direction.DESCENDING)
+          .limit(limit)
+
+        if (startAfterDoc != null) {
+          fallbackQuery = fallbackQuery.startAfter(startAfterDoc)
+        }
+        val fallbackSnapshot = fallbackQuery.get().await()
+        if (!fallbackSnapshot.isEmpty) {
+          snapshot = fallbackSnapshot
+        }
+      }
+
+      val list = snapshot.documents.mapNotNull { doc ->
+        val empId = doc.getString("employeeId") ?: return@mapNotNull null
+        val date = doc.getString("date") ?: return@mapNotNull null
+        DailyEodEntity(
+          id = 0,
+          employeeId = empId,
+          employeeName = doc.getString("employeeName") ?: doc.getString("name") ?: "",
+          departmentId = doc.getString("departmentId") ?: "DEPT_ML",
+          departmentCode = doc.getString("departmentCode") ?: "ML",
+          date = date,
+          project = doc.getString("project") ?: doc.getString("projectTitle") ?: "",
+          todayWork = doc.getString("todayWork") ?: doc.getString("workSummary") ?: doc.getString("taskDescription") ?: "",
+          workCompleted = doc.getString("workCompleted") ?: "",
+          workStatus = doc.getString("workStatus") ?: doc.getString("status") ?: "Completed",
+          attendanceStatus = doc.getString("attendanceStatus") ?: "Present",
+          blockers = doc.getString("blockers") ?: "",
+          remarks = doc.getString("remarks") ?: "",
+          tomorrowPlan = doc.getString("tomorrowPlan") ?: "",
+          submissionTime = doc.getString("submissionTime") ?: "17:45",
+          isOnTime = doc.getBoolean("isOnTime") ?: true,
+          syncStatus = SyncStatus.SYNCED.name,
+          submittedAt = doc.getLong("submittedAt") ?: System.currentTimeMillis(),
+          updatedAt = doc.getLong("updatedAt") ?: System.currentTimeMillis()
+        )
+      }
+
+      val lastDoc = snapshot.documents.lastOrNull()
+      val hasMore = list.size.toLong() >= limit
+
+      Result.success(EodHistoryQueryResult(list, lastDoc, hasMore))
+    } catch (e: Exception) {
+      Log.e(TAG, "fetchEodHistoryFromFirestore error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
 }
+
+data class EodHistoryQueryResult(
+  val items: List<DailyEodEntity>,
+  val lastDocumentSnapshot: com.google.firebase.firestore.DocumentSnapshot? = null,
+  val hasMore: Boolean = false
+)
+
 
