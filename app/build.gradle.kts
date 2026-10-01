@@ -1,4 +1,8 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
+import java.io.FileInputStream
+import java.text.SimpleDateFormat
+import java.util.Date
 
 plugins {
   alias(libs.plugins.android.application)
@@ -9,44 +13,86 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+// Load version properties safely
+val versionPropsFile = file("${rootProject.projectDir}/version.properties")
+val versionProps = Properties()
+
+if (versionPropsFile.exists()) {
+  versionProps.load(FileInputStream(versionPropsFile))
+}
+
+// Read version with safe defaults - renamed to avoid shadowing
+val appVersionMajor = versionProps.getProperty("VERSION_MAJOR", "1").toIntOrNull() ?: 1
+val appVersionMinor = versionProps.getProperty("VERSION_MINOR", "2").toIntOrNull() ?: 2
+val appVersionPatch = versionProps.getProperty("VERSION_PATCH", "1").toIntOrNull() ?: 1
+val appVersionCode = versionProps.getProperty("VERSION_CODE", "4").toIntOrNull() ?: 4
+val appVersionName = "$appVersionMajor.$appVersionMinor.$appVersionPatch"
+val appBuildTime = versionProps.getProperty("LAST_BUILD_TIME") 
+  ?: SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'").format(Date())
+
 android {
   namespace = "com.example"
-  compileSdk { version = release(36) { minorApiLevel = 1 } }
+  compileSdk = 35  // Using stable SDK 35 instead of 36
 
   defaultConfig {
     applicationId = "com.aistudio.workcore.kpmz"
     minSdk = 24
-    targetSdk = 36
-    versionCode = 2
-    versionName = "1.1"
+    targetSdk = 35  // Match compileSdk
+    versionCode = appVersionCode
+    versionName = appVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    
+    // Build time available in BuildConfig (VERSION_NAME and VERSION_CODE are auto-generated)
+    buildConfigField("String", "BUILD_TIME", "\"$appBuildTime\"")
   }
 
   signingConfigs {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      val keystore = file(keystorePath)
+      
+      // Only set signing config if file exists
+      if (keystore.exists()) {
+        storeFile = keystore
+        storePassword = System.getenv("STORE_PASSWORD")
+        keyAlias = "upload"
+        keyPassword = System.getenv("KEY_PASSWORD")
+      }
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      val debugKeystore = file("${rootDir}/debug.keystore")
+      if (debugKeystore.exists()) {
+        storeFile = debugKeystore
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
   }
 
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      
+      // Only set signing config if keystore exists
+      val releaseConfig = signingConfigs.getByName("release")
+      if (releaseConfig.storeFile?.exists() == true) {
+        signingConfig = releaseConfig
+      } else {
+        // Allow build without signing for local development
+        println("⚠️  WARNING: Release keystore not found. APK will not be signed.")
+      }
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug { 
+      val debugConfig = signingConfigs.getByName("debugConfig")
+      if (debugConfig.storeFile?.exists() == true) {
+        signingConfig = debugConfig
+      }
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11

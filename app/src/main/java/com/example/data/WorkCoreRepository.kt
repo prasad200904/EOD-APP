@@ -117,8 +117,9 @@ class WorkCoreRepository(
 
   // PRODUCTION MODE - Only creates admin account and departments, no demo data
   suspend fun initializeSeedDataIfNeeded() = withContext(Dispatchers.IO) {
-    android.util.Log.d("WorkCoreRepository", "🚀 PRODUCTION MODE - Starting database initialization...")
+    android.util.Log.d("WorkCoreRepository", "🚀 Starting database initialization...")
     
+    // Always ensure departments exist
     val existingDepts = departmentDao.getAllDepartments().first()
     if (existingDepts.isEmpty()) {
       android.util.Log.d("WorkCoreRepository", "📦 Initializing departments...")
@@ -130,26 +131,36 @@ class WorkCoreRepository(
     // Purge any lingering sample demo data from previous builds
     purgeAllSampleData()
 
+    // Always ensure admin exists (critical for app to function)
     val existing = employeeDao.getAllEmployees().first()
+    val hasAdmin = existing.any { it.employeeId == "ADMIN" }
     
-    if (existing.isEmpty()) {
-      android.util.Log.d("WorkCoreRepository", "🏭 PRODUCTION MODE - Creating admin account only (no demo data)")
+    if (!hasAdmin) {
+      android.util.Log.d("WorkCoreRepository", "📦 Creating admin account...")
       val adminEmp = SeedData.employees.first { it.employeeId == "ADMIN" }
       employeeDao.insert(adminEmp)
-      companyConfigDao.saveConfig(SeedData.companyConfig)
-      
-      android.util.Log.i("WorkCoreRepository", "✅ PRODUCTION MODE READY!")
       android.util.Log.i("WorkCoreRepository", "✅ Admin account created: admin / admin123")
-      android.util.Log.i("WorkCoreRepository", "✅ Database is clean - add your real employees via Admin Dashboard!")
     } else {
-      android.util.Log.d("WorkCoreRepository", "✓ Database already has data: ${existing.size} employees")
-      val hasAdmin = existing.any { it.employeeId == "ADMIN" }
-      if (!hasAdmin) {
-        android.util.Log.d("WorkCoreRepository", "📦 Adding missing admin account...")
-        val adminEmp = SeedData.employees.first { it.employeeId == "ADMIN" }
-        employeeDao.insert(adminEmp)
-      }
+      android.util.Log.d("WorkCoreRepository", "✓ Admin account exists")
     }
+    
+    // Ensure company config exists
+    val config = companyConfigDao.getConfig()
+    if (config == null) {
+      companyConfigDao.saveConfig(SeedData.companyConfig)
+    }
+    
+    // Initialize teams with passwords
+    val existingTeams = teamDao.getAllTeams().first()
+    if (existingTeams.isEmpty()) {
+      android.util.Log.d("WorkCoreRepository", "📦 Initializing teams with passwords...")
+      teamDao.insertAll(SeedData.teams)
+      android.util.Log.i("WorkCoreRepository", "✅ ${SeedData.teams.size} teams created with unique passwords")
+    } else {
+      android.util.Log.d("WorkCoreRepository", "✓ Teams already exist: ${existingTeams.size} teams")
+    }
+    
+    android.util.Log.i("WorkCoreRepository", "✅ Database initialization complete")
   }
 
   suspend fun purgeAllSampleData() = withContext(Dispatchers.IO) {
@@ -686,9 +697,9 @@ class WorkCoreRepository(
           name = employee.name,
           email = employee.email,
           employeeId = employee.employeeId,
-          role = employee.role,
           teamId = employee.team,
-          departmentId = employee.departmentId
+          departmentId = employee.departmentId,
+          isNewUser = false
         )
         
         if (profileResult.isSuccess) {
@@ -715,9 +726,9 @@ class WorkCoreRepository(
             name = employee.name,
             email = employee.email,
             employeeId = employee.employeeId,
-            role = employee.role,
             teamId = employee.team,
-            departmentId = employee.departmentId
+            departmentId = employee.departmentId,
+            isNewUser = true
           )
           
           if (profileResult.isSuccess) {
@@ -942,16 +953,31 @@ class WorkCoreRepository(
   fun computeBehaviorMetrics(
     employees: List<EmployeeEntity>,
     eods: List<DailyEodEntity>,
-    todayDate: String
+    todayDate: String,
+    expectedDays: Int = 30
   ): List<EmployeeBehaviorMetrics> {
+    val totalExpected = if (expectedDays > 0) expectedDays else 30
     return employees.map { emp ->
       val empEods = eods.filter { it.employeeId == emp.employeeId }
+      val submitted = empEods.size
+      val missing = (totalExpected - submitted).coerceAtLeast(0)
+      val submissionRate = if (totalExpected > 0) ((submitted * 100) / totalExpected).coerceAtMost(100) else 0
+
+      val consistencyStatus = when {
+        submissionRate >= 85 -> "Strong"
+        submissionRate >= 60 -> "Good"
+        else -> "Needs Attention"
+      }
+      val attentionAlertStr = if (consistencyStatus == "Needs Attention" || missing > 2) {
+        "Needs Attention: Missing $missing EODs"
+      } else null
+
       EmployeeBehaviorMetrics(
         employee = emp,
-        totalExpectedEods = 30,
-        submittedEods = empEods.size,
-        missingEods = 30 - empEods.size,
-        submissionRate = if (empEods.size > 0) (empEods.size * 100 / 30) else 0,
+        totalExpectedEods = totalExpected,
+        submittedEods = submitted,
+        missingEods = missing,
+        submissionRate = submissionRate,
         onTimeRate = 95,
         onTimeCount = empEods.count { it.isOnTime },
         lateCount = empEods.count { !it.isOnTime },
@@ -971,13 +997,13 @@ class WorkCoreRepository(
         blockedDaysCount = empEods.count { it.workStatus == "Blocked" },
         blockedWorkPercentage = 0,
         completedPercentage = 85,
-        eodConsistencyStatus = "Good",
+        eodConsistencyStatus = consistencyStatus,
         workConsistencyStatus = "Good",
         progressConsistencyStatus = "Good",
         reportingReliabilityStatus = "Good",
         completionPatternStatus = "Good",
         objectiveInsights = listOf("Regular submissions", "Good progress"),
-        attentionAlert = null
+        attentionAlert = attentionAlertStr
       )
     }
   }
@@ -1092,6 +1118,80 @@ class WorkCoreRepository(
       limit = limit,
       startAfterDoc = startAfterDoc
     )
+  }
+
+  /**
+   * Insert a new team directly (for admin team creation)
+   */
+  suspend fun insertTeam(team: TeamEntity): Long = withContext(Dispatchers.IO) {
+    return@withContext createTeam(team)
+  }
+
+  /**
+   * Insert a new employee directly (for admin account creation)
+   */
+  suspend fun insertEmployee(employee: EmployeeEntity): Long = withContext(Dispatchers.IO) {
+    return@withContext addEmployee(employee)
+  }
+
+  /**
+   * Sync employees from Firebase to local Room database
+   * Call this after login to fetch all employees from Firestore
+   */
+  suspend fun syncEmployeesFromFirebase(): Result<Int> = withContext(Dispatchers.IO) {
+    android.util.Log.d("WorkCoreRepository", "🔄 Starting employee sync from Firebase...")
+    android.util.Log.d("WorkCoreRepository", "Firebase initialized: ${firebaseDataSource != null}")
+    
+    return@withContext try {
+      val result = firebaseDataSource?.fetchEmployees()
+      
+      if (result == null) {
+        android.util.Log.w("WorkCoreRepository", "⚠️ Firebase not initialized, skipping sync")
+        return@withContext Result.success(0)
+      }
+      
+      result.fold(
+        onSuccess = { employees ->
+          android.util.Log.d("WorkCoreRepository", "✅ Fetched ${employees.size} employees from Firebase")
+          
+          if (employees.isEmpty()) {
+            android.util.Log.w("WorkCoreRepository", "⚠️ No employees found in Firebase!")
+            return@withContext Result.success(0)
+          }
+          
+          // Log first few employees for verification
+          employees.take(5).forEach { emp ->
+            android.util.Log.d("WorkCoreRepository", "  Sample: ${emp.name} (${emp.employeeId}) team=${emp.team}")
+          }
+          
+          // Insert or update each employee in local database
+          var syncCount = 0
+          employees.forEach { emp ->
+            try {
+              employeeDao.insert(emp)
+              syncCount++
+            } catch (e: Exception) {
+              android.util.Log.e("WorkCoreRepository", "Failed to sync ${emp.name}: ${e.message}")
+            }
+          }
+          
+          android.util.Log.i("WorkCoreRepository", "✅ Synced $syncCount employees to local database")
+          
+          // Verify data was written
+          val localCount = employeeDao.getAllEmployees().first().size
+          android.util.Log.i("WorkCoreRepository", "📊 Local database now has $localCount total employees")
+          
+          Result.success(syncCount)
+        },
+        onFailure = { error ->
+          android.util.Log.e("WorkCoreRepository", "❌ Failed to fetch employees: ${error.message}")
+          Result.failure(error)
+        }
+      )
+    } catch (e: Exception) {
+      android.util.Log.e("WorkCoreRepository", "❌ Sync error: ${e.message}", e)
+      Result.failure(e)
+    }
   }
 }
 

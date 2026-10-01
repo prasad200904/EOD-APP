@@ -101,6 +101,8 @@ import com.example.ui.screens.DownloadEodScreen
 import com.example.ui.screens.EmployeeDetailDialog
 import com.example.ui.screens.ExportReportDialog
 import com.example.ui.screens.LoginScreen
+import com.example.ui.screens.CreateAdminAccountScreen
+import com.example.ui.screens.AddTeamScreen
 import com.example.ui.screens.TeamHistoryScreen
 import com.example.ui.screens.MoveEmployeeDialog
 import com.example.ui.screens.NotificationCenterDialog
@@ -116,9 +118,20 @@ import com.example.ui.theme.WorkBackground
 import com.example.ui.theme.WorkOutlineVariant
 import com.example.ui.theme.WorkPrimary
 import com.example.ui.theme.WorkSurface
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.example.ui.viewmodel.AppTab
 import com.example.ui.viewmodel.WorkCoreViewModel
 import com.example.util.AppUpdateChecker
+import com.example.util.AppUpdateInstaller
 import com.example.util.AppVersion
 
 class MainActivity : ComponentActivity() {
@@ -183,33 +196,49 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
   val selectedDepartmentCode by viewModel.selectedDepartmentCode.collectAsState()
   val managerTeamMembers by viewModel.managerTeamMembers.collectAsState()
   var showAddEmployeeScreen by remember { mutableStateOf(false) }
+  var showAddTeamScreen by remember { mutableStateOf(false) }
 
   // App Update Check State
   val context = androidx.compose.ui.platform.LocalContext.current
+  val lifecycleOwner = LocalLifecycleOwner.current
   var showUpdateDialog by remember { mutableStateOf(false) }
   var showCheckingUpdate by remember { mutableStateOf(false) }
   var updateInfo by remember { mutableStateOf<AppVersion?>(null) }
   val currentVersionName = remember { AppUpdateChecker.getCurrentVersionName(context) }
+  var updateCheckCompleted by remember { mutableStateOf(false) }
+  val scope = rememberCoroutineScope()
 
-  // Check for updates on app start (only once when user is logged in)
-  LaunchedEffect(authSession) {
-    if (authSession != null) {
-      kotlinx.coroutines.delay(2000) // Wait 2 seconds after login
-      showCheckingUpdate = true
-      
+  // Run update check immediately on app startup
+  LaunchedEffect(Unit) {
+    if (!updateCheckCompleted) {
+      var isCheckingComplete = false
+      // Show checking spinner only if check takes longer than 800ms
+      val spinnerJob = launch {
+        delay(800)
+        if (!isCheckingComplete) {
+          showCheckingUpdate = true
+        }
+      }
+
       try {
         val update = AppUpdateChecker.checkForUpdate(context)
+        isCheckingComplete = true
+        spinnerJob.cancel()
         showCheckingUpdate = false
-        
+        updateCheckCompleted = true
+
         if (update != null) {
-          // Don't show if user already dismissed this version (unless mandatory)
           if (update.isMandatory || !AppUpdateChecker.isUpdateDismissed(context, update.versionCode)) {
             updateInfo = update
             showUpdateDialog = true
           }
         }
       } catch (e: Exception) {
+        isCheckingComplete = true
+        spinnerJob.cancel()
         showCheckingUpdate = false
+        updateCheckCompleted = true
+        android.util.Log.e("MainActivity", "Update check failed: ${e.message}", e)
       }
     }
   }
@@ -221,6 +250,9 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
     }
   }
 
+  // REMOVED: CreateAdminAccountScreen
+  // Admin is now auto-created from seed data on first launch
+  
   // If not logged in, show the single unified LoginScreen (Admin / Manager / Employee)
   if (authSession == null) {
     LoginScreen(
@@ -261,7 +293,12 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
       Crossfade(targetState = currentTab, label = "TabCrossfade") { tab ->
         when (tab) {
           AppTab.DASHBOARD -> {
-            if (showAddEmployeeScreen) {
+            if (showAddTeamScreen) {
+              AddTeamScreen(
+                viewModel = viewModel,
+                onNavigateBack = { showAddTeamScreen = false }
+              )
+            } else if (showAddEmployeeScreen) {
               AddEmployeeScreen(
                 currentManager = authSession?.employee,
                 allDepartments = departments,
@@ -299,7 +336,8 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
                 onSendNudge = { emp ->
                   viewModel.snackbarMessage.value = "Nudge notification sent to ${emp.name}."
                 },
-                onAddEmployeeClick = { showAddEmployeeScreen = true }
+                onAddEmployeeClick = { showAddEmployeeScreen = true },
+                onAddTeamClick = { showAddTeamScreen = true }
               )
             } else {
               val activeEmp by viewModel.activeRosterEmployee.collectAsState()
@@ -656,9 +694,9 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
       currentVersion = currentVersionName,
       updateInfo = updateInfo!!,
       onDownloadClick = {
-        // Open download URL in browser
+        // Download and install update APK
         if (updateInfo!!.downloadUrl.isNotBlank()) {
-          AppUpdateChecker.openDownloadUrl(context, updateInfo!!.downloadUrl)
+          AppUpdateInstaller.downloadAndInstall(context, updateInfo!!.downloadUrl, updateInfo!!.versionName)
         }
         // Don't dismiss for mandatory updates
         if (!updateInfo!!.isMandatory) {

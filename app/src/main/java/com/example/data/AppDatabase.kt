@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
     TeamEntity::class,
     NotificationEntity::class
   ],
-  version = 10,
+  version = 11,  // Incremented for teamPassword migration
   exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,7 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
         .fallbackToDestructiveMigration()
         .build()
         
-        android.util.Log.i("AppDatabase", "✅ Database instance created (version 10 - CLEAN PRODUCTION)")
+        android.util.Log.i("AppDatabase", "✅ Database instance created (version 11 - Added team passwords)")
         INSTANCE = instance
         instance
       }

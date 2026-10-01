@@ -134,7 +134,8 @@ data class TeamEntity(
   val projects: String, // Comma-separated or serialized projects e.g. "Employee Behavior Prediction, NLP Summarizer"
   val createdDate: String = "2024-01-01",
   val status: String = "Active", // "Active", "Inactive"
-  val description: String = ""
+  val description: String = "",
+  val teamPassword: String = "password123" // Team-level login password (unique per team)
 )
 
 @Entity(

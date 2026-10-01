@@ -3,8 +3,10 @@ package com.example.util
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.core.content.FileProvider
+import androidx.core.content.pm.PackageInfoCompat
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import java.io.File
@@ -57,11 +59,13 @@ object AppUpdateChecker {
                         minRequiredVersion = minRequiredVersion
                     )
                 }
+            } else {
+                Log.w(TAG, "Firestore update config document '$DOCUMENT_NAME' does not exist in collection '$COLLECTION_NAME'")
             }
 
             null
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking for updates", e)
+            Log.e(TAG, "Firestore error checking for updates: ${e.message}", e)
             null
         }
     }
@@ -72,7 +76,7 @@ object AppUpdateChecker {
     private fun getCurrentVersionCode(context: Context): Int {
         return try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            packageInfo.versionCode
+            PackageInfoCompat.getLongVersionCode(packageInfo).toInt()
         } catch (e: Exception) {
             Log.e(TAG, "Error getting version code", e)
             1
@@ -110,6 +114,25 @@ object AppUpdateChecker {
      */
     fun installApk(context: Context, file: File) {
         try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!context.packageManager.canRequestPackageInstalls()) {
+                    Log.w(TAG, "Install unknown apps permission not granted, opening settings...")
+                    val settingsIntent = Intent(
+                        android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:${context.packageName}")
+                    ).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(settingsIntent)
+                    android.widget.Toast.makeText(
+                        context,
+                        "Please allow 'Install unknown apps' permission to install the update.",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    return
+                }
+            }
+
             val uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
@@ -122,7 +145,8 @@ object AppUpdateChecker {
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            Log.e(TAG, "Error installing APK", e)
+            Log.e(TAG, "Error installing APK: ${e.message}", e)
+            android.widget.Toast.makeText(context, "Failed to launch installer: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 

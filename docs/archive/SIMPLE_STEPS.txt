@@ -1,0 +1,93 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                  HOW TO GET APK DOWNLOAD URL - SIMPLE                     ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+📱 STEP 1: BUILD APK (2 min)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Open Command Prompt:
+> cd c:\Users\vundr\OneDrive\Desktop\app\workcore
+> gradlew assembleDebug
+
+✅ APK Created at: app\build\outputs\apk\debug\app-debug.apk
+
+
+☁️ STEP 2: UPLOAD TO FIREBASE (3 min)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Go to: https://console.firebase.google.com
+2. Select your project
+3. Click "Storage" in left menu
+4. Click "Get Started" (if first time)
+5. Click "Upload file"
+6. Select: app-debug.apk
+7. After upload, click on the file
+8. Copy the "Download URL" (looks like):
+   https://firebasestorage.googleapis.com/v0/b/...
+
+
+🔥 STEP 3: ADD TO FIRESTORE (1 min)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Click "Firestore Database" in left menu
+2. Create collection: "app_config"
+3. Create document: "version_info"
+4. Add these fields:
+
+   ┌─────────────────────┬──────────┬─────────────────────────┐
+   │ Field               │ Type     │ Value                   │
+   ├─────────────────────┼──────────┼─────────────────────────┤
+   │ versionCode         │ number   │ 2                       │
+   │ versionName         │ string   │ 1.2.0                   │
+   │ downloadUrl         │ string   │ (paste Firebase URL)    │
+   │ releaseNotes        │ string   │ • Bug fixes             │
+   │ isMandatory         │ boolean  │ true                    │
+   │ minRequiredVersion  │ number   │ 1                       │
+   └─────────────────────┴──────────┴─────────────────────────┘
+
+5. Click "Save"
+
+
+✅ STEP 4: TEST (30 sec)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Close WorkCore app completely
+2. Open app again
+3. Update dialog appears! 🎉
+4. Click "Update Now"
+5. APK downloads and installs
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                            QUICK REFERENCE                                ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+Firebase Console:  https://console.firebase.google.com
+Your Project:      workcore (or whatever you named it)
+Collection Name:   app_config
+Document Name:     version_info
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ALTERNATIVE: Google Drive (if Firebase is confusing)
+
+1. Upload app-debug.apk to Google Drive
+2. Right-click → Share → "Anyone with link"
+3. Copy link (example): 
+   https://drive.google.com/file/d/ABC123XYZ/view
+
+4. Change to download link:
+   https://drive.google.com/uc?export=download&id=ABC123XYZ
+   (Replace ABC123XYZ with your file ID from step 3)
+
+5. Use this URL in Firestore downloadUrl field
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💡 TIP: Firebase Storage is FREE and works best!
+   - 5GB free storage
+   - Fast downloads worldwide
+   - Easy to manage versions
+
+
+Need help? Check these files:
+📄 QUICK_SETUP_GUIDE.md - Detailed instructions with troubleshooting
+📄 HOW_TO_HOST_APK.md - All hosting options explained

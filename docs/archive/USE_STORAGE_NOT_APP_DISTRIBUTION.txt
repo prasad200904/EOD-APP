@@ -1,0 +1,136 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║          ❌ APP DISTRIBUTION vs ✅ FIREBASE STORAGE                       ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+
+❌ FIREBASE APP DISTRIBUTION (What you used)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Link looks like:
+  https://appdistribution.firebase.dev/i/abc123
+
+What happens:
+  1. Opens browser
+  2. Shows Firebase login page
+  3. User must be invited tester
+  4. Then shows download button
+  
+❌ This DOESN'T work for auto-update!
+
+
+✅ FIREBASE STORAGE (What you need)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Link looks like:
+  https://firebasestorage.googleapis.com/v0/b/project.appspot.com/o/app.apk?alt=media&token=xyz
+
+What happens:
+  1. APK downloads immediately!
+  
+✅ This WORKS perfectly for auto-update!
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                        WHAT YOU NEED TO DO NOW                            ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+STEP 1: Go to Firebase Console
+        https://console.firebase.google.com
+
+STEP 2: Click "Storage" in left menu
+        (NOT "App Distribution"!)
+        
+        ┌─────────────────────────┐
+        │ 🏗️ Build               │
+        │   ├─ Authentication     │
+        │   ├─ Firestore Database │
+        │   ├─ Storage  👈 CLICK  │  ← Use this one!
+        │   └─ Functions          │
+        │                         │
+        │ 📱 Release & Monitor    │
+        │   └─ App Distribution   │  ← NOT this one!
+        └─────────────────────────┘
+
+STEP 3: Click "Get Started" (if first time)
+
+STEP 4: Click "Upload file" button
+
+STEP 5: Select your APK file
+        Location: c:\Users\vundr\OneDrive\Desktop\app\workcore\
+                  app\build\outputs\apk\debug\app-debug.apk
+
+STEP 6: After upload, click on the file
+
+STEP 7: Copy the "Download URL" from right panel
+        It will look like:
+        https://firebasestorage.googleapis.com/v0/b/...
+
+STEP 8: Test the URL!
+        ├─ Paste URL in Chrome browser
+        └─ Should immediately download APK ✅
+
+STEP 9: Add URL to Firestore
+        ├─ Go to Firestore Database
+        ├─ Collection: app_config
+        ├─ Document: version_info
+        └─ Field: downloadUrl = "YOUR_STORAGE_URL"
+
+STEP 10: Test in app!
+         ├─ Close WorkCore app
+         ├─ Open app again
+         ├─ Update dialog appears! 🎉
+         └─ Click "Update Now" → Works!
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                              IMPORTANT!                                   ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+The download URL MUST start with:
+  ✅ https://firebasestorage.googleapis.com/
+
+NOT:
+  ❌ https://appdistribution.firebase.dev/
+  ❌ https://console.firebase.google.com/
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                           QUICK TEST                                      ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+After getting the URL, test it:
+
+1. Copy the URL
+2. Open Chrome browser
+3. Paste URL in address bar
+4. Press Enter
+
+If it works correctly:
+  ✅ APK file downloads immediately
+  ✅ No login page
+  ✅ No web page opens
+  
+If something is wrong:
+  ❌ Opens a web page
+  ❌ Shows error message
+  ❌ Asks for login
+  → Then URL is wrong! Get it from Storage, not App Distribution!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BOTH ARE USEFUL - JUST DIFFERENT PURPOSES:
+
+Use App Distribution for:
+  📱 Testing with beta testers
+  👥 Internal team sharing
+  
+Use Storage for:
+  🔄 Auto-update system (your current need!)
+  📥 Direct downloads
+
+You can use BOTH at the same time!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+Need detailed help? Read:
+  📄 FIREBASE_STORAGE_VS_APP_DISTRIBUTION.md

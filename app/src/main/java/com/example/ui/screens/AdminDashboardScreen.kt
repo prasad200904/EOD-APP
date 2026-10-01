@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Send
@@ -84,6 +85,7 @@ fun AdminDashboardScreen(
   onAvatarClick: () -> Unit,
   onSendNudge: (EmployeeEntity) -> Unit,
   onAddEmployeeClick: () -> Unit,
+  onAddTeamClick: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   var selectedMemberForDetail by remember { mutableStateOf<TeamMemberBehaviorItem?>(null) }
@@ -291,6 +293,50 @@ fun AdminDashboardScreen(
               Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
               Text("Add Employee", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+        }
+      }
+
+      // 3b. Team Management Banner: Create Team
+      item {
+        Surface(
+          shape = RoundedCornerShape(16.dp),
+          color = EodDarkSurface,
+          border = BorderStroke(1.dp, EodDarkCardBorder),
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = "Team Management",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = EodTextPrimary
+              )
+              Spacer(modifier = Modifier.height(2.dp))
+              Text(
+                text = "Create new team with unique password for department access",
+                fontSize = 11.sp,
+                color = EodTextSecondary
+              )
+            }
+
+            Button(
+              onClick = onAddTeamClick,
+              shape = RoundedCornerShape(10.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+              modifier = Modifier.testTag("admin_add_team_btn")
+            ) {
+              Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("Create Team", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
           }
         }

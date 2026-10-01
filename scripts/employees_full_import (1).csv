@@ -1,0 +1,56 @@
+name,email,department,departmentId,team,managerId,designation,joiningDate
+AADEPU SUSHMA,aadepu.sushma@sample.com,Cyber,DEPT_CYBER,Cyber Team,ADMIN,Cyber Security & Network Analyst,2026-01-01
+VUYYALA SYAM GOPAL,vuyyala.gopal@sample.com,Cyber,DEPT_CYBER,Cyber Team,ADMIN,Cyber Security Analyst,2026-01-01
+KALLA GOWTHAM,kalla.gowtham@sample.com,Cyber,DEPT_CYBER,Cyber Team,ADMIN,Cyber Security Analyst,2026-01-01
+V SIREESHA,v.sireesha@sample.com,Cyber,DEPT_CYBER,Cyber Team,ADMIN,Cyber Security Analyst,2026-01-01
+SEKHARAPALLI KARTHIK RAM KUMAR,sekharapalli.kumar@sample.com,Cyber,DEPT_CYBER,Cyber Team,ADMIN,Cyber Security Forensic Engineer,2026-01-01
+PEETHA SRI HARSHINI,peetha.harshini@sample.com,DB,DEPT_DB,DB Team,EMP009,Data Analyst,2026-01-01
+PAMULAPATI SUPRIYA,pamulapati.supriya@sample.com,DB,DEPT_DB,DB Team,EMP009,Data Analyst,2026-01-01
+KONDA VASUNDHARA REDDY,konda.reddy@sample.com,DB,DEPT_DB,DB Team,EMP009,Data Analyst,2026-01-01
+MOHAMMED ASHAR REHAN,mohammed.rehan@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+SAYYAD SAMEER,sayyad.sameer@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+REKHAPALLI NAGALAKSHMI,rekhapalli.nagalakshmi@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+GADE BALA ABHILASH REDDY,gade.reddy@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+MALLIPEDDI LOHITHA,mallipeddi.lohitha@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+KESANA NAGA MANIKANTA BABU,kesana.babu@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+MATTA VINAY AKHIL,matta.akhil@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+PEDDI SAI KIRAN,peddi.kiran@sample.com,ML,DEPT_ML,ML Team,EMP009,Data Scientist,2026-01-01
+MEDISETTI CHANDRA MOULI,medisetti.mouli@sample.com,GT,DEPT_GT,General Team,EMP008,Full-Stack Developer,2026-01-01
+EEDPUGANTI ESWARI,eedpuganti.eswari@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+KAKANI JAGADEESH,kakani.jagadeesh@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+KATTA DURGA SAI KUMAR,katta.kumar@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+ADIVISHNU JYOTHIR RAGA SAI VIGNESH,adivishnu.vignesh@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+VALLABHANENI VAKDEVI,vallabhaneni.vakdevi@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+MOHAMMED KARISHMA SULTHANA,mohammed.sulthana@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+MADDIRALA ANANT RAAG,maddirala.raag@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+KOTA RAVALI,kota.ravali@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+CH SUVARNA,ch.suvarna@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+CH E VALLI DEVI,ch.devi@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+S ESWAR NAGA VENKATA SATYA PRASAD,s.prasad@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+MD IBRAHIM,md.ibrahim@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+MD ABDUL HAFEEZ,md.hafeez@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+K KEERTHANA,k.keerthana@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+KORASALA NARASIMHARAJU,korasala.narasimharaju@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+VADLAMANI NAGASUDHEER,vadlamani.nagasudheer@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+LOCHARLA HARIKA,locharla.harika@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+CHANDANA KUMBA,chandana.kumba@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+REKHA BENAYARAM,rekha.benayaram@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+GATTIGORLA DINESH,gattigorla.dinesh@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+ITHAM RAM MURTHY,itham.murthy@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+SANIVARAPU GIRISH KUMAR REDDY,sanivarapu.reddy@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+POLA VENKATA KANAKA DURGA CHITTI BABU VEMPADA,pola.vempada@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+TAUFEEQ MOHAMMAD,taufeeq.mohammad@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+PRABHU KRANTHI,prabhu.kranthi@sample.com,Writing,DEPT_WRITING,Writing Team,EMP005,Research Analyst,2026-01-01
+VANAPALLI VENKATESH,vanapalli.venkatesh@sample.com,GT,DEPT_GT,General Team,EMP008,Software Developer,2026-01-01
+MEKALA AKHIL PREETAM,mekala.preetam@sample.com,GT,DEPT_GT,General Team,EMP008,Software Developer,2026-01-01
+GANJA VIJAY KUMAR,ganja.kumar@sample.com,GT,DEPT_GT,General Team,EMP008,Software Developer,2026-01-01
+KILARI REVATHI,kilari.revathi@sample.com,GT,DEPT_GT,General Team,EMP008,Software Developer,2026-01-01
+MD ZIYA,md.ziya@sample.com,GT,DEPT_GT,General Team,EMP008,Software Engineer,2026-01-01
+L SADA SIVA RAO,l.rao@sample.com,GT,DEPT_GT,General Team,EMP008,Software Engineer,2026-01-01
+MATTA ARUN ADITYA,matta.aditya@sample.com,GT,DEPT_GT,General Team,EMP008,Software Engineer,2026-01-01
+G.SIVARAMALAKSHMI,g.sivaramalakshmi@sample.com,DB,DEPT_DB,DB Team,EMP009,Sr. Data Analyst,2026-01-01
+KASU KAVYA,kasu.kavya@sample.com,DB,DEPT_DB,DB Team,EMP009,Sr. Data Analyst,2026-01-01
+MULLA LAKSHMI PRASANNA,mulla.prasanna@sample.com,DB,DEPT_DB,DB Team,EMP009,Sr. Data Analyst,2026-01-01
+SYED WASIM AKRAM,syed.akram@sample.com,DB,DEPT_DB,DB Team,EMP009,Sr. Data Analyst/Team Leader,2026-01-01
+VUNDRALA DURGA PRASAD,vundrala.prasad@sample.com,GT,DEPT_GT,General Team,EMP008,Software Developer,2026-01-01
+MEKALA BHAVANI SANKAR,mekala.sankar@sample.com,GT,DEPT_GT,General Team,EMP008,Software Developer,2026-01-01

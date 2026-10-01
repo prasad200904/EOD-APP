@@ -375,9 +375,36 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
 
   fun loginDepartment(
     teamName: String,
+    password: String,
     onResult: (Boolean, String?) -> Unit
   ) {
     viewModelScope.launch {
+      // Debug: Log all available teams
+      android.util.Log.d("WorkCoreAuth", "Available teams: ${teams.value.map { it.name }}")
+      android.util.Log.d("WorkCoreAuth", "Looking for team: '$teamName'")
+      
+      // Fetch team from database to verify password
+      val team = teams.value.firstOrNull { 
+        it.name.equals(teamName, ignoreCase = true) || 
+        it.department.equals(teamName, ignoreCase = true)
+      }
+      
+      if (team == null) {
+        // More detailed error message
+        val availableTeams = teams.value.joinToString(", ") { it.name }
+        onResult(false, "Team '$teamName' not found. Available: $availableTeams")
+        return@launch
+      }
+      
+      android.util.Log.d("WorkCoreAuth", "Found team: ${team.name}, password check: ${team.teamPassword}")
+      
+      // Check if password matches
+      if (team.teamPassword != password) {
+        onResult(false, "Invalid password for $teamName")
+        return@launch
+      }
+      
+      // Password is correct - allow login
       currentDepartmentTeam.value = teamName
       currentRole.value = Role.EMPLOYEE
       activeRosterEmployee.value = null
@@ -388,6 +415,23 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
       )
       currentTab.value = AppTab.DASHBOARD
       snackbarMessage.value = "Signed in to $teamName roster"
+      
+      // AUTO-SYNC: Fetch employees from Firebase after successful login
+      launch {
+        android.util.Log.d("WorkCoreAuth", "🔄 Auto-syncing employees from Firebase...")
+        val syncResult = repository.syncEmployeesFromFirebase()
+        syncResult.fold(
+          onSuccess = { count ->
+            if (count > 0) {
+              android.util.Log.i("WorkCoreAuth", "✅ Synced $count employees from Firebase")
+            }
+          },
+          onFailure = { error ->
+            android.util.Log.w("WorkCoreAuth", "⚠️ Sync failed: ${error.message}")
+          }
+        )
+      }
+      
       onResult(true, null)
     }
   }
@@ -630,6 +674,25 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
         currentEmployeeId.value = user.employeeId
         currentTab.value = AppTab.DASHBOARD
         snackbarMessage.value = "Welcome back, ${user.name}!"
+        
+        // AUTO-SYNC: Fetch employees from Firebase after successful login
+        if (role == Role.ADMIN) {
+          launch {
+            android.util.Log.d("WorkCoreAuth", "🔄 Auto-syncing employees from Firebase (Admin login)...")
+            val syncResult = repository.syncEmployeesFromFirebase()
+            syncResult.fold(
+              onSuccess = { count ->
+                if (count > 0) {
+                  android.util.Log.i("WorkCoreAuth", "✅ Synced $count employees from Firebase")
+                }
+              },
+              onFailure = { error ->
+                android.util.Log.w("WorkCoreAuth", "⚠️ Sync failed: ${error.message}")
+              }
+            )
+          }
+        }
+        
         onResult(true, null)
       } else {
         val error = result.exceptionOrNull()?.message ?: "Authentication failed."
@@ -807,6 +870,128 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
 
   fun clearSnackbar() {
     snackbarMessage.value = null
+  }
+
+  /**
+   * Create a new team with a unique password
+   * Only accessible by Admin role
+   */
+  fun createTeam(
+    teamName: String,
+    department: String,
+    departmentCode: String,
+    managerId: String,
+    managerName: String,
+    teamPassword: String,
+    description: String,
+    projects: String,
+    onResult: (Boolean, String?) -> Unit
+  ) {
+    viewModelScope.launch {
+      try {
+        // Check if team already exists
+        val existingTeam = teams.value.firstOrNull { 
+          it.name.equals(teamName, ignoreCase = true) 
+        }
+        
+        if (existingTeam != null) {
+          onResult(false, "Team with name '$teamName' already exists")
+          return@launch
+        }
+        
+        // Generate unique team ID
+        val teamId = "TEAM_${teamName.uppercase().replace(" ", "_")}_${System.currentTimeMillis()}"
+        
+        // Create team entity
+        val newTeam = TeamEntity(
+          teamId = teamId,
+          name = teamName,
+          department = department,
+          managerId = managerId,
+          managerName = managerName,
+          projects = projects.ifBlank { "General Projects" },
+          createdDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date()),
+          status = "Active",
+          description = description.ifBlank { "Team for $department department" },
+          teamPassword = teamPassword
+        )
+        
+        // Insert into database
+        repository.insertTeam(newTeam)
+        
+        android.util.Log.i("WorkCoreViewModel", "✅ Team created: $teamName with password")
+        snackbarMessage.value = "Team '$teamName' created successfully"
+        onResult(true, null)
+        
+      } catch (e: Exception) {
+        android.util.Log.e("WorkCoreViewModel", "❌ Failed to create team", e)
+        onResult(false, e.message ?: "Failed to create team")
+      }
+    }
+  }
+
+  /**
+   * Create the first admin account during initial setup
+   * Only works if no admin exists
+   */
+  fun createAdminAccount(
+    username: String,
+    fullName: String,
+    email: String,
+    phone: String,
+    password: String,
+    onResult: (Boolean, String?) -> Unit
+  ) {
+    viewModelScope.launch {
+      try {
+        // Check if admin already exists
+        val existingAdmin = employees.value.firstOrNull { 
+          it.role == Role.ADMIN.name 
+        }
+        
+        if (existingAdmin != null) {
+          onResult(false, "Admin account already exists")
+          return@launch
+        }
+        
+        // Create admin employee entity
+        val adminEmployee = EmployeeEntity(
+          employeeId = "ADMIN",
+          name = fullName,
+          email = email,
+          phone = phone.ifBlank { "+1 (555) 000-0001" },
+          department = "Cyber",
+          departmentId = "DEPT_CYBER",
+          team = "Executive",
+          managerId = "BOARD",
+          designation = "System Administrator",
+          defaultProject = "Executive Governance",
+          joiningDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date()),
+          role = Role.ADMIN.name,
+          password = password
+        )
+        
+        // Insert into database
+        repository.insertEmployee(adminEmployee)
+        
+        android.util.Log.i("WorkCoreViewModel", "✅ Admin account created: $username")
+        snackbarMessage.value = "Admin account created. You can now log in."
+        onResult(true, null)
+        
+      } catch (e: Exception) {
+        android.util.Log.e("WorkCoreViewModel", "❌ Failed to create admin account", e)
+        onResult(false, e.message ?: "Failed to create admin account")
+      }
+    }
+  }
+
+  /**
+   * Check if any admin account exists in the system
+   */
+  fun hasAdminAccount(): Boolean {
+    return employees.value.any { it.role == Role.ADMIN.name }
   }
 }
 

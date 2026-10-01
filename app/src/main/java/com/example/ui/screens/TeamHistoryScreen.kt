@@ -242,9 +242,16 @@ fun TeamHistoryScreen(
         lastDocSnapshot = queryResult.lastDocumentSnapshot
         hasMoreHistory = queryResult.hasMore
       }.onFailure { err ->
-        val msg = err.message ?: "Failed to query Firestore eodReports."
+        val msg = err.message ?: "Failed to query Firestore EOD history."
         historyError = if (msg.contains("INDEX", ignoreCase = true) || msg.contains("FAILED_PRECONDITION", ignoreCase = true)) {
           "Firestore composite index required for (employeeId ASC, date DESC). Please create index in Firebase Console.\n\n$msg"
+        } else if (msg.contains("PERMISSION_DENIED", ignoreCase = true)) {
+          if (eods.isNotEmpty()) {
+            // Silently fallback to local Room DB records without displaying intimidating red card
+            null
+          } else {
+            "Permission Denied: Missing Firestore rules in Firebase Console. Please update rules to allow reading eod_submissions.\n\n$msg"
+          }
         } else {
           msg
         }

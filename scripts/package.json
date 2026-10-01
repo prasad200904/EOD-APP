@@ -1,0 +1,13 @@
+{
+  "name": "workcore-scripts",
+  "version": "1.0.0",
+  "description": "WorkCore employee import scripts",
+  "main": "import_employees_from_csv.js",
+  "scripts": {
+    "import": "node import_employees_from_csv.js"
+  },
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "firebase-admin": "^12.0.0"
+  }
+}

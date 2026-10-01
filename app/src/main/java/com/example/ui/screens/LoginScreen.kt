@@ -106,10 +106,10 @@ fun LoginScreen(
 
   // Inputs
   var employeeId by remember { mutableStateOf("GT-001") }
-  var employeePassword by remember { mutableStateOf("password123") }
+  var employeePassword by remember { mutableStateOf("") }
 
   var adminUsername by remember { mutableStateOf("admin") }
-  var adminPassword by remember { mutableStateOf("admin123") }
+  var adminPassword by remember { mutableStateOf("") }
 
   var passwordVisible by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -138,7 +138,7 @@ fun LoginScreen(
         }
       }
       Role.EMPLOYEE -> {
-        viewModel.loginDepartment(selectedDepartment) { success, err ->
+        viewModel.loginDepartment(selectedDepartment, employeePassword) { success, err ->
           if (success) onLoginSuccess() else errorMessage = err
         }
       }
@@ -552,7 +552,7 @@ fun LoginScreen(
               onClick = {
                 selectedRole = Role.EMPLOYEE
                 selectedDepartment = "GT Team"
-                employeePassword = "password123"
+                employeePassword = "gt123"
                 errorMessage = null
               }
             )
@@ -565,7 +565,7 @@ fun LoginScreen(
               onClick = {
                 selectedRole = Role.EMPLOYEE
                 selectedDepartment = "ML Team"
-                employeePassword = "password123"
+                employeePassword = "ml123"
                 errorMessage = null
               }
             )
@@ -578,7 +578,7 @@ fun LoginScreen(
               onClick = {
                 selectedRole = Role.EMPLOYEE
                 selectedDepartment = "DB Team"
-                employeePassword = "password123"
+                employeePassword = "db123"
                 errorMessage = null
               }
             )
@@ -596,7 +596,7 @@ fun LoginScreen(
               onClick = {
                 selectedRole = Role.EMPLOYEE
                 selectedDepartment = "Cyber Security"
-                employeePassword = "password123"
+                employeePassword = "cyber123"
                 errorMessage = null
               }
             )
@@ -609,7 +609,7 @@ fun LoginScreen(
               onClick = {
                 selectedRole = Role.EMPLOYEE
                 selectedDepartment = "Writing Team"
-                employeePassword = "password123"
+                employeePassword = "write123"
                 errorMessage = null
               }
             )

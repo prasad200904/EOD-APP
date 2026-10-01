@@ -75,9 +75,9 @@ class FirebaseDataSource(private val context: Context) {
     name: String,
     email: String,
     employeeId: String,
-    role: String,
     teamId: String,
-    departmentId: String
+    departmentId: String,
+    isNewUser: Boolean = false
   ): Result<Unit> {
     val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
     return try {
@@ -86,12 +86,18 @@ class FirebaseDataSource(private val context: Context) {
         "name" to name,
         "email" to email,
         "employeeId" to employeeId,
-        "role" to if (role.equals(Role.ADMIN.name, ignoreCase = true)) Role.ADMIN.name else Role.EMPLOYEE.name,
         "teamId" to teamId,
         "departmentId" to departmentId,
-        "isActive" to true,
         "updatedAt" to System.currentTimeMillis()
       )
+      
+      // Only set role and isActive on new user creation
+      // Existing users cannot change these fields from client
+      if (isNewUser) {
+        data["role"] = Role.EMPLOYEE.name
+        data["isActive"] = true
+      }
+      
       db.collection("users").document(uid).set(data, SetOptions.merge()).await()
       Result.success(Unit)
     } catch (e: Exception) {
@@ -241,6 +247,15 @@ class FirebaseDataSource(private val context: Context) {
       val snapshot = db.collection("employees").get().await()
       val list = snapshot.documents.mapNotNull { doc ->
         val empId = doc.getString("employeeId") ?: return@mapNotNull null
+        
+        // Handle createdAt field - can be Timestamp or Long
+        val createdAtValue = try {
+          val timestamp = doc.getTimestamp("createdAt")
+          timestamp?.toDate()?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+          doc.getLong("createdAt") ?: System.currentTimeMillis()
+        }
+        
         EmployeeEntity(
           id = 0,
           employeeId = empId,
@@ -255,7 +270,7 @@ class FirebaseDataSource(private val context: Context) {
           joiningDate = doc.getString("joiningDate") ?: "2024-01-01",
           role = doc.getString("role") ?: Role.EMPLOYEE.name,
           isActive = doc.getBoolean("isActive") ?: true,
-          createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+          createdAt = createdAtValue
         )
       }
       Result.success(list)
@@ -428,6 +443,15 @@ class FirebaseDataSource(private val context: Context) {
       if (e != null || snapshot == null) return@addSnapshotListener
       val list = snapshot.documents.mapNotNull { doc ->
         val empId = doc.getString("employeeId") ?: return@mapNotNull null
+        
+        // Handle createdAt field - can be Timestamp or Long
+        val createdAtValue = try {
+          val timestamp = doc.getTimestamp("createdAt")
+          timestamp?.toDate()?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+          doc.getLong("createdAt") ?: System.currentTimeMillis()
+        }
+        
         EmployeeEntity(
           id = 0,
           employeeId = empId,
@@ -442,7 +466,7 @@ class FirebaseDataSource(private val context: Context) {
           joiningDate = doc.getString("joiningDate") ?: "2024-01-01",
           role = doc.getString("role") ?: Role.EMPLOYEE.name,
           isActive = doc.getBoolean("isActive") ?: true,
-          createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+          createdAt = createdAtValue
         )
       }
       onUpdate(list)
@@ -458,7 +482,8 @@ class FirebaseDataSource(private val context: Context) {
   ): Result<EodHistoryQueryResult> {
     val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
     return try {
-      var query: com.google.firebase.firestore.Query = db.collection("eodReports")
+      // 1. Primary Query: "eod_submissions" collection (where active EODs are stored)
+      var query: com.google.firebase.firestore.Query = db.collection("eod_submissions")
 
       if (!employeeId.isNullOrBlank() && !employeeId.equals("All", ignoreCase = true)) {
         query = query.whereEqualTo("employeeId", employeeId)
@@ -473,11 +498,12 @@ class FirebaseDataSource(private val context: Context) {
         query = query.startAfter(startAfterDoc)
       }
 
-      var snapshot = query.get().await()
+      val primaryRes = runCatching { query.get().await() }
+      var snapshot = primaryRes.getOrNull()
 
-      // Fallback: If eodReports is empty, query eod_submissions
-      if (snapshot.isEmpty) {
-        var fallbackQuery: com.google.firebase.firestore.Query = db.collection("eod_submissions")
+      // 2. Fallback: If eod_submissions is empty or threw an error, query legacy "eodReports" collection
+      if (snapshot == null || snapshot.isEmpty) {
+        var fallbackQuery: com.google.firebase.firestore.Query = db.collection("eodReports")
         if (!employeeId.isNullOrBlank() && !employeeId.equals("All", ignoreCase = true)) {
           fallbackQuery = fallbackQuery.whereEqualTo("employeeId", employeeId)
         }
@@ -489,13 +515,21 @@ class FirebaseDataSource(private val context: Context) {
         if (startAfterDoc != null) {
           fallbackQuery = fallbackQuery.startAfter(startAfterDoc)
         }
-        val fallbackSnapshot = fallbackQuery.get().await()
-        if (!fallbackSnapshot.isEmpty) {
+
+        val fallbackRes = runCatching { fallbackQuery.get().await() }
+        val fallbackSnapshot = fallbackRes.getOrNull()
+        if (fallbackSnapshot != null && !fallbackSnapshot.isEmpty) {
           snapshot = fallbackSnapshot
+        } else if (snapshot == null && primaryRes.isFailure) {
+          // If primary query failed with exception (e.g. PERMISSION_DENIED), log warning & return failure
+          val primaryErr = primaryRes.exceptionOrNull()
+          Log.w(TAG, "Both eod_submissions and eodReports queries failed/empty: ${primaryErr?.message}")
+          if (primaryErr != null) return Result.failure(primaryErr)
         }
       }
 
-      val list = snapshot.documents.mapNotNull { doc ->
+      val docs = snapshot?.documents ?: emptyList()
+      val list = docs.mapNotNull { doc ->
         val empId = doc.getString("employeeId") ?: return@mapNotNull null
         val date = doc.getString("date") ?: return@mapNotNull null
         DailyEodEntity(
@@ -521,7 +555,7 @@ class FirebaseDataSource(private val context: Context) {
         )
       }
 
-      val lastDoc = snapshot.documents.lastOrNull()
+      val lastDoc = docs.lastOrNull()
       val hasMore = list.size.toLong() >= limit
 
       Result.success(EodHistoryQueryResult(list, lastDoc, hasMore))

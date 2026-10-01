@@ -1,18 +1,42 @@
 *.iml
 .gradle
 .kotlin
-/local.properties
+local.properties
+.env
+debug.keystore
+
+# Build outputs
+/build
+**/build/
+app/build/
+/captures
+.externalNativeBuild
+.cxx
+
+# IDE
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/.idea/appInsightsSettings.xml
+/.idea/deviceStreaming.xml
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-.env
-debug.keystore
+
+# Keystores
+*.jks
+*.keystore
+my-upload-key.jks
+
+# Firebase Service Account Credentials
+serviceAccountKey.json
+*serviceAccount*.json
+*service-account*.json
+scripts/serviceAccountKey.json
+*.key.json
+
+# Scripts temp files
+scripts/temp_passwords.csv
+scripts/node_modules/
+

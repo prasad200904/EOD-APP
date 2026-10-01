@@ -1,0 +1,154 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║               🔁 WHY UPDATE DIALOG KEEPS APPEARING                        ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+THE PROBLEM:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Your APK version:     2
+Firestore version:    2
+
+App checks: Is 2 > 2? NO
+Result: ❌ Infinite loop! Update dialog appears forever!
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                           ✅ SOLUTION                                     ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+I ALREADY UPDATED YOUR VERSION TO 3!
+
+Now follow these steps:
+
+
+STEP 1: BUILD NEW APK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Open Command Prompt:
+
+  cd c:\Users\vundr\OneDrive\Desktop\app\workcore
+  gradlew clean assembleDebug
+
+Wait for build to complete...
+
+
+STEP 2: INSTALL NEW APK ON YOUR PHONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+APK location:
+  app\build\outputs\apk\debug\app-debug.apk
+
+Install this new APK (version 3) on your phone
+
+
+STEP 3: TEST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Open the app:
+
+Your app version:     3
+Firestore version:    2
+
+Is 3 > 2? YES → Already up to date!
+✅ No update dialog appears!
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                       HOW IT SHOULD WORK                                  ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+CORRECT FLOW:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. USER WITH OLD VERSION (v1):
+   ├─ Opens app (version 1)
+   ├─ Firestore says: version 2 available
+   ├─ 2 > 1 → Show update dialog ✅
+   ├─ User updates → Now has version 2
+   └─ Opens app → 2 = 2 → No dialog ✅
+
+2. USER WITH CURRENT VERSION (v2):
+   ├─ Opens app (version 2)
+   ├─ Firestore says: version 2
+   ├─ 2 = 2 → Already up to date
+   └─ No update dialog ✅
+
+3. YOU (DEVELOPER WITH v3):
+   ├─ Opens app (version 3)
+   ├─ Firestore says: version 2
+   ├─ 3 > 2 → Already ahead!
+   └─ No update dialog ✅
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                  WHEN TO UPDATE FIRESTORE                                 ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+ONLY update Firestore when you want to PUSH UPDATE to users!
+
+Example timeline:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Week 1: Release v1.0 to users
+  ├─ Your code: versionCode = 1
+  ├─ Firestore: (nothing yet)
+  └─ Users have: version 1
+
+Week 2: Want to push update to v1.1
+  ├─ Build new APK with versionCode = 2
+  ├─ Upload to Firebase Storage
+  ├─ Update Firestore: versionCode = 2, downloadUrl = new URL
+  └─ Users with v1 → See update dialog → Update to v2 ✅
+
+Week 3: Working on v1.2 (testing)
+  ├─ Your code: versionCode = 3 (for testing)
+  ├─ Firestore: Still 2 (don't change yet!)
+  ├─ You test with version 3 → No update dialog ✅
+  └─ Users still on v2 → No update dialog ✅
+
+Week 4: Ready to release v1.2
+  ├─ Upload APK version 3 to Firebase Storage
+  ├─ Update Firestore: versionCode = 3, downloadUrl = new URL
+  └─ Users with v2 → See update dialog → Update to v3 ✅
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                         VERSION NUMBERS                                   ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+✅ UPDATED IN build.gradle.kts:
+
+  versionCode = 3      ← Must be integer, increases each release
+  versionName = "1.2"  ← User-friendly, can be any format
+
+
+⚠️ KEEP IN FIRESTORE (don't change yet):
+
+  versionCode: 2       ← This is what users should update TO
+  versionName: "1.1"
+  
+
+When you're ready to push v1.2 to users, THEN update Firestore to 3.
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║                           QUICK COMMANDS                                  ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+# Build new APK with version 3:
+gradlew clean assembleDebug
+
+# Check version in APK info (on phone):
+Settings → Apps → WorkCore → Advanced → App details
+Should show: Version 1.2 (3)
+
+# If update dialog still appears:
+Check Firestore → app_config → version_info → versionCode
+Should be 2 (or less than 3)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SUMMARY:
+  ✅ I changed your version to 3 in build.gradle.kts
+  ✅ Rebuild APK: gradlew clean assembleDebug
+  ✅ Install new APK
+  ✅ Update dialog will stop appearing!
+  
+For detailed explanation, read: FIX_INFINITE_UPDATE_LOOP.md

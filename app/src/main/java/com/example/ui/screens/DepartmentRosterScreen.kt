@@ -66,7 +66,12 @@ fun DepartmentRosterScreen(
 ) {
   // Filter employees for this department
   val deptEmployees = remember(employees, departmentName) {
-    employees.filter { emp ->
+    android.util.Log.d("DepartmentRoster", "=== FILTERING EMPLOYEES ===")
+    android.util.Log.d("DepartmentRoster", "Department Name: '$departmentName'")
+    android.util.Log.d("DepartmentRoster", "Total Employees: ${employees.size}")
+    android.util.Log.d("DepartmentRoster", "All employee teams: ${employees.map { "${it.name} -> ${it.team}" }}")
+    
+    val filtered = employees.filter { emp ->
       emp.role == "EMPLOYEE" && (
         emp.team.equals(departmentName, ignoreCase = true) ||
         emp.department.equals(departmentName, ignoreCase = true) ||
@@ -77,6 +82,13 @@ fun DepartmentRosterScreen(
         (departmentName.contains("Writing", true) && (emp.department.contains("Writing", true) || emp.team.contains("Writing", true)))
       )
     }.sortedBy { it.employeeId }
+    
+    android.util.Log.d("DepartmentRoster", "Filtered Employees: ${filtered.size}")
+    filtered.forEach { emp ->
+      android.util.Log.d("DepartmentRoster", "  - ${emp.name} (${emp.employeeId}) team=${emp.team} dept=${emp.department}")
+    }
+    
+    filtered
   }
 
   // Calculate submitted vs pending for TODAY

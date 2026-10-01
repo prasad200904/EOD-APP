@@ -159,7 +159,7 @@ fun UpdateAvailableDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Download Update",
+                            text = "Update Now",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White

@@ -88,7 +88,8 @@ object SeedData {
       projects = "Employee Behavior Prediction, NLP Summarizer, Model Evaluation",
       createdDate = "2024-01-10",
       status = "Active",
-      description = "Predictive modeling and behavioral analytics team"
+      description = "Predictive modeling and behavioral analytics team",
+      teamPassword = "ml123"  // Unique password for ML Team
     ),
     TeamEntity(
       teamId = "TEAM_WRITE",
@@ -99,7 +100,8 @@ object SeedData {
       projects = "Technical Documentation, API Guides, Case Studies, Release Notes",
       createdDate = "2024-01-15",
       status = "Active",
-      description = "Developer documentation and product content"
+      description = "Developer documentation and product content",
+      teamPassword = "write123"  // Unique password for Writing Team
     ),
     TeamEntity(
       teamId = "TEAM_DB",
@@ -110,18 +112,32 @@ object SeedData {
       projects = "PostgreSQL Migration, ETL Pipeline, Replica Scaling, Performance Indexing",
       createdDate = "2024-02-01",
       status = "Active",
-      description = "Core database infrastructure and data warehousing"
+      description = "Core database infrastructure and data warehousing",
+      teamPassword = "db123"  // Unique password for DB Team
     ),
     TeamEntity(
       teamId = "TEAM_GEN",
-      name = "General Team",
+      name = "GT Team",
       department = "GT",
       managerId = "EMP008",
       managerName = "Sita Verma",
       projects = "Operations & Compliance, Administrative Support, Cross-Team Coordination",
       createdDate = "2023-11-01",
       status = "Active",
-      description = "General operations, compliance, and enterprise planning"
+      description = "General operations, compliance, and enterprise planning",
+      teamPassword = "gt123"  // Unique password for GT Team
+    ),
+    TeamEntity(
+      teamId = "TEAM_CYBER",
+      name = "Cyber Security",
+      department = "Cyber",
+      managerId = "ADMIN",
+      managerName = "System Administrator",
+      projects = "Security Audits, Penetration Testing, Compliance Monitoring",
+      createdDate = "2023-06-01",
+      status = "Active",
+      description = "Cybersecurity and information security team",
+      teamPassword = "cyber123"  // Unique password for Cyber Security
     )
   )
 
