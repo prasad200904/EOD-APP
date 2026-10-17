@@ -163,6 +163,14 @@ fun TeamHistoryScreen(
   var dateFilterType by remember { mutableStateOf("This month") }
   val filterOptions = listOf("This month", "Previous month", "Custom date range")
 
+  // Team filter state
+  var selectedTeamFilter by remember { mutableStateOf("All Teams") }
+  val teamFilterOptions = listOf(
+    "All Teams", "Marketing", "Counsellor", "Tele Caller", 
+    "Cyber Security", "ML Team", "DB Team", "General Team", 
+    "Writing Team", "TEGA", "Manager"
+  )
+
   // Custom date range state
   val sdfYmd = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
   val todayStr = remember { sdfYmd.format(Calendar.getInstance().time) }
@@ -235,11 +243,11 @@ fun TeamHistoryScreen(
 
       res.onSuccess { queryResult ->
         if (reset) {
-          historyEodList = queryResult.items
+          historyEodList = queryResult.eods
         } else {
-          historyEodList = historyEodList + queryResult.items
+          historyEodList = historyEodList + queryResult.eods
         }
-        lastDocSnapshot = queryResult.lastDocumentSnapshot
+        lastDocSnapshot = queryResult.lastDocument
         hasMoreHistory = queryResult.hasMore
       }.onFailure { err ->
         val msg = err.message ?: "Failed to query Firestore EOD history."
@@ -260,14 +268,14 @@ fun TeamHistoryScreen(
   }
 
   // Trigger query whenever filter options change
-  LaunchedEffect(dateFilterType, customStartDate, customEndDate, selectedEmployeeIdFilter) {
+  LaunchedEffect(dateFilterType, customStartDate, customEndDate, selectedEmployeeIdFilter, selectedTeamFilter) {
     if (dateValidationError == null) {
       loadEodHistoryFromFirestore(reset = true)
     }
   }
 
   // Combined displayed EOD list (Firestore results fallback to local eods if empty)
-  val displayedRecords = remember(historyEodList, eods, dateFilterType, customStartDate, customEndDate, selectedEmployeeIdFilter) {
+  val displayedRecords = remember(historyEodList, eods, dateFilterType, customStartDate, customEndDate, selectedEmployeeIdFilter, selectedTeamFilter, teamMembers) {
     val rawList = if (historyEodList.isNotEmpty()) historyEodList else eods
     val (sDate, eDate) = calculateDateRangeStrings(dateFilterType, customStartDate, customEndDate)
     val sOnly = sDate.take(10)
@@ -277,7 +285,16 @@ fun TeamHistoryScreen(
       val dateOnly = eod.date.take(10)
       val dateMatches = dateOnly >= sOnly && dateOnly <= eOnly
       val empMatches = selectedEmployeeIdFilter == "All" || eod.employeeId == selectedEmployeeIdFilter
-      dateMatches && empMatches
+      
+      // Team filter logic: find employee by ID and check their team
+      val teamMatches = if (selectedTeamFilter == "All Teams") {
+        true
+      } else {
+        val employee = teamMembers.firstOrNull { it.employee.employeeId == eod.employeeId }
+        employee?.employee?.team?.equals(selectedTeamFilter, ignoreCase = true) ?: false
+      }
+      
+      dateMatches && empMatches && teamMatches
     }.sortedByDescending { it.date }.map { eod ->
       var dayNum = "01"
       var dayName = "Day"
@@ -585,6 +602,44 @@ fun TeamHistoryScreen(
                 contentAlignment = Alignment.Center
               ) {
                 Text("${emp.name} (${emp.employeeId})", fontSize = 12.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = Color.White)
+              }
+            }
+          }
+        }
+      }
+
+      // Team Filter Chips
+      item {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            text = "Filter by Team",
+            fontSize = 12.sp,
+            color = Color(0xFF9CA3AF),
+            fontWeight = FontWeight.Medium
+          )
+
+          LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            items(teamFilterOptions) { teamName ->
+              val isSel = selectedTeamFilter == teamName
+              Box(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(16.dp))
+                  .background(if (isSel) Color(0xFF059669) else Color(0xFF191A22))
+                  .border(1.dp, if (isSel) Color(0xFF10B981) else Color(0xFF2B2D3A), RoundedCornerShape(16.dp))
+                  .clickable { selectedTeamFilter = teamName }
+                  .padding(horizontal = 14.dp, vertical = 6.dp)
+                  .testTag("team_filter_$teamName"),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = teamName,
+                  fontSize = 12.sp,
+                  fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                  color = Color.White
+                )
               }
             }
           }

@@ -92,18 +92,24 @@ fun SimpleEmployeesScreen(
   modifier: Modifier = Modifier
 ) {
   var searchQuery by remember { mutableStateOf("") }
-  var selectedTeamFilter by remember { mutableStateOf("All") }
+  var selectedTeamFilter by remember { mutableStateOf("All Teams") }
   var selectedEmployeeForDetail by remember { mutableStateOf<EmployeeEntity?>(null) }
 
-  // Unique team names
-  val teamOptions = remember(employees) {
-    listOf("All") + employees.map { it.team }.distinct().sorted()
+  // Team filter options
+  val teamFilterOptions = remember(employees) {
+    listOf(
+      "All Teams", "Marketing", "Counsellor", "Tele Caller", 
+      "Cyber Security", "ML Team", "DB Team", "General Team", 
+      "Writing Team", "TEGA", "Manager"
+    )
   }
 
   // Filtered employees list
   val filteredEmployees = remember(employees, searchQuery, selectedTeamFilter) {
     employees.filter { emp ->
-      val matchesTeam = selectedTeamFilter == "All" || emp.team.equals(selectedTeamFilter, ignoreCase = true)
+      val matchesTeam = selectedTeamFilter == "All Teams" || 
+        emp.team.equals(selectedTeamFilter, ignoreCase = true) ||
+        emp.department.equals(selectedTeamFilter, ignoreCase = true)
       val matchesSearch = searchQuery.isBlank() ||
         emp.name.contains(searchQuery, ignoreCase = true) ||
         emp.employeeId.contains(searchQuery, ignoreCase = true) ||
@@ -168,20 +174,6 @@ fun SimpleEmployeesScreen(
               fontSize = 12.sp,
               fontWeight = FontWeight.SemiBold,
               color = Color.White
-            )
-            Text(
-              text = "•",
-              fontSize = 12.sp,
-              color = Color(0xFFEADDFF)
-            )
-            val todayEodSubmittedCount = employees.count { emp ->
-              eods.any { it.employeeId == emp.employeeId && it.date == SeedData.TODAY }
-            }
-            Text(
-              text = "$todayEodSubmittedCount Submitted Today",
-              fontSize = 12.sp,
-              color = Color(0xFFC8E6C9),
-              fontWeight = FontWeight.Bold
             )
           }
         }
@@ -251,16 +243,25 @@ fun SimpleEmployeesScreen(
           )
         )
 
+        // Team Filter Chips
+        Text(
+          text = "Filter by Team",
+          fontSize = 11.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color(0xFF79747E)
+        )
+        
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-          items(teamOptions) { teamName ->
+          items(teamFilterOptions) { teamName ->
             FilterChip(
               selected = selectedTeamFilter == teamName,
               onClick = { selectedTeamFilter = teamName },
               label = { Text(teamName, fontSize = 11.sp) },
               colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = Color(0xFFEADDFF),
-                selectedLabelColor = Color(0xFF21005D)
-              )
+                selectedContainerColor = Color(0xFF4ECDC4),
+                selectedLabelColor = Color.White
+              ),
+              modifier = Modifier.testTag("people_team_filter_$teamName")
             )
           }
         }
@@ -273,6 +274,7 @@ fun SimpleEmployeesScreen(
     items(filteredEmployees) { emp ->
       val hasTodayEod = eods.any { it.employeeId == emp.employeeId && it.date == SeedData.TODAY }
       val empEodCount = eods.count { it.employeeId == emp.employeeId }
+      var showDeleteConfirm by remember { mutableStateOf(false) }
 
       Surface(
         modifier = Modifier
@@ -289,7 +291,7 @@ fun SimpleEmployeesScreen(
             .padding(16.dp),
           verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-          // Top Row: Avatar + Name + ID + EOD Status
+          // Top Row: Avatar + Name + ID + Delete Button
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -316,18 +318,58 @@ fun SimpleEmployeesScreen(
               }
             }
 
-            Surface(
-              shape = RoundedCornerShape(8.dp),
-              color = if (hasTodayEod) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-            ) {
-              Text(
-                text = if (hasTodayEod) "EOD SUBMITTED" else "EOD PENDING",
-                fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (hasTodayEod) Color(0xFF1B5E20) else Color(0xFFB71C1C),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-              )
+            // Delete Button (Admin only)
+            if (currentRole == Role.ADMIN && onDeleteEmployeeAccount != null && emp.employeeId != "ADMIN") {
+              if (showDeleteConfirm) {
+                Row(
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFDC2626),
+                    modifier = Modifier.clickable {
+                      showDeleteConfirm = false
+                      onDeleteEmployeeAccount(emp.employeeId)
+                    }
+                  ) {
+                    Text(
+                      text = "Confirm",
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = Color.White,
+                      modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                  }
+                  Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFF9CA3AF),
+                    modifier = Modifier.clickable { showDeleteConfirm = false }
+                  ) {
+                    Text(
+                      text = "Cancel",
+                      fontSize = 10.sp,
+                      fontWeight = FontWeight.Bold,
+                      color = Color.White,
+                      modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                  }
+                }
+              } else {
+                IconButton(
+                  onClick = { showDeleteConfirm = true },
+                  modifier = Modifier
+                    .size(36.dp)
+                    .testTag("delete_btn_${emp.employeeId}")
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Employee",
+                    tint = Color(0xFFDC2626),
+                    modifier = Modifier.size(20.dp)
+                  )
+                }
+              }
             }
           }
 

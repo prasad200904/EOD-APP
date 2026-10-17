@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.FilterAltOff
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
@@ -95,9 +96,6 @@ fun AdminDashboardScreen(
   onNotificationsClick: () -> Unit,
   onAvatarClick: () -> Unit,
   onSendNudge: (EmployeeEntity) -> Unit,
-  onAddEmployeeClick: () -> Unit,
-  onAddTeamClick: () -> Unit = {},
-  onResetFirestoreClick: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   var selectedMemberForDetail by remember { mutableStateOf<TeamMemberBehaviorItem?>(null) }
@@ -210,15 +208,56 @@ fun AdminDashboardScreen(
         }
       }
 
-      // 2. Department Filter Chips: [ All ] [ ML ] [ GT ] [ DB ] [ Cyber ] [ Writing ]
+      // 2. Department Filter Chips: [ All ] [ ML ] [ GT ] [ DB ] [ Cyber ] [ Writing ] + Clear Filters button
       item {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text(
-            text = "Filter by Department",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = WarmTextMuted
-          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Filter by Department",
+              fontSize = 11.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = WarmTextMuted
+            )
+            
+            // Clear Filters Button
+            val hasActiveFilters = selectedDepartmentCode != "ALL" || selectedCompanyId != "ALL"
+            if (hasActiveFilters) {
+              Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = CoralPrimary,
+                modifier = Modifier
+                  .clickable {
+                    onDepartmentSelect("ALL")
+                    onCompanySelect("ALL")
+                  }
+                  .testTag("clear_filters_btn")
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.FilterAltOff,
+                    contentDescription = "Clear Filters",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                  )
+                  Text(
+                    text = "Clear Filters",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                  )
+                }
+              }
+            }
+          }
+          
           LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
@@ -321,52 +360,6 @@ fun AdminDashboardScreen(
                   modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                 )
               }
-            }
-          }
-        }
-      }
-
-
-
-      // 3c. Firebase Sync Banner: Reset Firestore with Local Data (ONE-TIME ADMIN)
-      item {
-        Surface(
-          shape = RoundedCornerShape(16.dp),
-          color = Color(0xFFFFE8D6), // Warm orange tint
-          border = BorderStroke(1.dp, Color(0xFFFB923C)),
-          modifier = Modifier.fillMaxWidth()
-        ) {
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Column(modifier = Modifier.weight(1f)) {
-              Text(
-                text = "🔥 Reset Firebase Data (Admin Only)",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFDC2626)
-              )
-              Spacer(modifier = Modifier.height(2.dp))
-              Text(
-                text = "Delete all old Firestore employees and upload 73 new CSV employees",
-                fontSize = 11.sp,
-                color = WarmTextMuted
-              )
-            }
-
-            Button(
-              onClick = onResetFirestoreClick,
-              shape = RoundedCornerShape(10.dp),
-              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFB923C)),
-              modifier = Modifier.testTag("admin_reset_firestore_btn")
-            ) {
-              Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Reset Firebase", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
           }
         }
