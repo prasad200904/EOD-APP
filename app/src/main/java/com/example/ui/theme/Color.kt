@@ -2,7 +2,33 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Exact Dark Obsidian Theme Palette from the Screenshots
+// NEW Design System - Warm Gradient Theme
+// Background gradient: Cream to Blue
+val WarmCream = Color(0xFFFFF8F0)
+val WarmBlue = Color(0xFF4A6FA5)
+val GradientStart = WarmCream
+val GradientEnd = WarmBlue
+
+// Primary colors
+val CoralPrimary = Color(0xFFFF6B6B)
+val CoralLight = Color(0xFFFF9B9B) // Lighter coral
+val MintGreen = Color(0xFF4ECDC4)
+val DarkSlate = Color(0xFF3D4F5C) // Secondary buttons
+val DarkSlateDeep = Color(0xFF2C3E50) // Darker buttons, text on light backgrounds
+
+// Warm Theme Admin UI Colors
+val WarmCardWhite = Color(0xFFFFFFFF)
+val WarmCardBorder = Color(0xFFE8D5C4)
+val WarmTextMuted = Color(0xFF8B7355)
+
+// UI Element colors
+val SelectedBorder = Color(0xFF5D7A5D) // Dark green border for selected items
+val LightCoralBorder = Color(0xFFFFB3B3) // Light border for cyber security
+val ButtonTextWhite = Color(0xFFFFFFFF)
+val LabelText = Color(0xFF2C3E50) // Dark text for labels
+val SubtleText = Color(0xFF6B7280) // Subtle gray text
+
+// Legacy colors kept for backward compatibility
 val EodDarkBackground = Color(0xFF0F0F12)
 val EodDarkSurface = Color(0xFF191A20)
 val EodDarkSurfaceElevated = Color(0xFF202128)
@@ -10,7 +36,7 @@ val EodDarkCardBorder = Color(0xFF262730)
 val EodDarkInputBg = Color(0xFF141519)
 val EodDarkInputBorder = Color(0xFF2B2C36)
 
-val EodPrimaryPurple = Color(0xFF5348DE) // Exact "Submit EOD" / "Generate report" purple
+val EodPrimaryPurple = Color(0xFF5348DE) // Kept for backward compatibility
 val EodPrimaryPurpleHover = Color(0xFF6459E8)
 val EodActivePillBg = Color(0xFFF1F0FE)
 val EodActivePillText = Color(0xFF3F32C0)

@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
@@ -49,8 +50,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.DepartmentEntity
+import com.example.data.CompanyEntity
 import com.example.data.EmployeeEntity
 import com.example.data.TeamMemberBehaviorItem
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.DarkSlateDeep
 import com.example.ui.theme.EodActivePillBg
 import com.example.ui.theme.EodActivePillText
 import com.example.ui.theme.EodAvatarBg
@@ -64,6 +68,10 @@ import com.example.ui.theme.EodPrimaryPurple
 import com.example.ui.theme.EodTextMuted
 import com.example.ui.theme.EodTextPrimary
 import com.example.ui.theme.EodTextSecondary
+import com.example.ui.theme.WarmCardBorder
+import com.example.ui.theme.WarmCardWhite
+import com.example.ui.theme.WarmCream
+import com.example.ui.theme.WarmTextMuted
 
 /**
  * Admin Dashboard Screen
@@ -75,8 +83,11 @@ import com.example.ui.theme.EodTextSecondary
 @Composable
 fun AdminDashboardScreen(
   allDepartments: List<DepartmentEntity>,
+  allCompanies: List<CompanyEntity>,
   selectedDepartmentCode: String,
+  selectedCompanyId: String,
   onDepartmentSelect: (String) -> Unit,
+  onCompanySelect: (String) -> Unit,
   teamMembers: List<TeamMemberBehaviorItem>,
   submittedCount: Int,
   totalCount: Int,
@@ -86,6 +97,7 @@ fun AdminDashboardScreen(
   onSendNudge: (EmployeeEntity) -> Unit,
   onAddEmployeeClick: () -> Unit,
   onAddTeamClick: () -> Unit = {},
+  onResetFirestoreClick: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   var selectedMemberForDetail by remember { mutableStateOf<TeamMemberBehaviorItem?>(null) }
@@ -126,7 +138,7 @@ fun AdminDashboardScreen(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(WarmCream)
   ) {
     LazyColumn(
       modifier = Modifier
@@ -146,12 +158,12 @@ fun AdminDashboardScreen(
               text = "Admin Console",
               fontSize = 22.sp,
               fontWeight = FontWeight.Bold,
-              color = EodTextPrimary
+              color = DarkSlateDeep
             )
             Text(
               text = "All Departments · Live Monitoring",
               fontSize = 12.sp,
-              color = EodTextSecondary
+              color = WarmTextMuted
             )
           }
 
@@ -163,8 +175,8 @@ fun AdminDashboardScreen(
               modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(EodDarkSurface)
-                .border(BorderStroke(1.dp, EodDarkCardBorder), CircleShape)
+                .background(WarmCardWhite)
+                .border(BorderStroke(1.dp, WarmCardBorder), CircleShape)
                 .clickable { onNotificationsClick() }
                 .testTag("admin_notifications_bell"),
               contentAlignment = Alignment.Center
@@ -172,7 +184,7 @@ fun AdminDashboardScreen(
               Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = "Notifications",
-                tint = EodTextSecondary,
+                tint = WarmTextMuted,
                 modifier = Modifier.size(20.dp)
               )
             }
@@ -181,8 +193,8 @@ fun AdminDashboardScreen(
               modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF312E81))
-                .border(BorderStroke(1.dp, EodPrimaryPurple), CircleShape)
+                .background(CoralPrimary)
+                .border(BorderStroke(1.dp, CoralPrimary), CircleShape)
                 .clickable { onAvatarClick() }
                 .testTag("admin_avatar_button"),
               contentAlignment = Alignment.Center
@@ -205,7 +217,7 @@ fun AdminDashboardScreen(
             text = "Filter by Department",
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
-            color = EodTextMuted
+            color = WarmTextMuted
           )
           LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -215,8 +227,8 @@ fun AdminDashboardScreen(
               val isSelected = selectedDepartmentCode == "ALL" || selectedDepartmentCode.isBlank()
               Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = if (isSelected) EodPrimaryPurple else EodDarkSurface,
-                border = BorderStroke(1.dp, if (isSelected) EodPrimaryPurple else EodDarkCardBorder),
+                color = if (isSelected) CoralPrimary else WarmCardWhite,
+                border = BorderStroke(1.dp, if (isSelected) CoralPrimary else WarmCardBorder),
                 modifier = Modifier
                   .clickable { onDepartmentSelect("ALL") }
                   .testTag("dept_chip_ALL")
@@ -225,7 +237,7 @@ fun AdminDashboardScreen(
                   text = "All Depts",
                   fontSize = 12.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = if (isSelected) Color.White else EodTextSecondary,
+                  color = if (isSelected) Color.White else DarkSlateDeep,
                   modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                 )
               }
@@ -235,8 +247,8 @@ fun AdminDashboardScreen(
               val isSelected = selectedDepartmentCode.equals(dept.code, ignoreCase = true)
               Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = if (isSelected) EodPrimaryPurple else EodDarkSurface,
-                border = BorderStroke(1.dp, if (isSelected) EodPrimaryPurple else EodDarkCardBorder),
+                color = if (isSelected) CoralPrimary else WarmCardWhite,
+                border = BorderStroke(1.dp, if (isSelected) CoralPrimary else WarmCardBorder),
                 modifier = Modifier
                   .clickable { onDepartmentSelect(dept.code) }
                   .testTag("dept_chip_${dept.code}")
@@ -245,7 +257,7 @@ fun AdminDashboardScreen(
                   text = "${dept.code} · ${dept.name}",
                   fontSize = 12.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = if (isSelected) Color.White else EodTextSecondary,
+                  color = if (isSelected) Color.White else DarkSlateDeep,
                   modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                 )
               }
@@ -254,56 +266,74 @@ fun AdminDashboardScreen(
         }
       }
 
-      // 3. Primary Action Banner: Add Employee Account
+      // 2.5 Company Filter Chips: [ All Companies ] [ Sandspace Technologies ] [ Academic Overseas ]
       item {
-        Surface(
-          shape = RoundedCornerShape(16.dp),
-          color = EodDarkSurface,
-          border = BorderStroke(1.dp, EodDarkCardBorder),
-          modifier = Modifier.fillMaxWidth()
-        ) {
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            text = "Filter by Company",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = WarmTextMuted
+          )
+          LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
           ) {
-            Column(modifier = Modifier.weight(1f)) {
-              Text(
-                text = "Employee Management",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = EodTextPrimary
-              )
-              Spacer(modifier = Modifier.height(2.dp))
-              Text(
-                text = "Add new employee account with department selector",
-                fontSize = 11.sp,
-                color = EodTextSecondary
-              )
+            item {
+              val isSelected = selectedCompanyId == "ALL"
+              Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (isSelected) CoralPrimary else WarmCardWhite,
+                border = BorderStroke(1.dp, if (isSelected) CoralPrimary else WarmCardBorder),
+                modifier = Modifier
+                  .clickable { onCompanySelect("ALL") }
+                  .testTag("company_chip_ALL")
+              ) {
+                Text(
+                  text = "All Companies",
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = if (isSelected) Color.White else DarkSlateDeep,
+                  modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                )
+              }
             }
 
-            Button(
-              onClick = onAddEmployeeClick,
-              shape = RoundedCornerShape(10.dp),
-              colors = ButtonDefaults.buttonColors(containerColor = EodPrimaryPurple),
-              modifier = Modifier.testTag("admin_add_employee_btn")
-            ) {
-              Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text("Add Employee", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            items(allCompanies) { company ->
+              val isSelected = selectedCompanyId == company.companyId
+              val displayName = when {
+                company.type == "PARENT" -> "🏢 ${company.name}"
+                else -> "🏛️ ${company.name}"
+              }
+              Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (isSelected) CoralPrimary else WarmCardWhite,
+                border = BorderStroke(1.dp, if (isSelected) CoralPrimary else WarmCardBorder),
+                modifier = Modifier
+                  .clickable { onCompanySelect(company.companyId) }
+                  .testTag("company_chip_${company.companyId}")
+              ) {
+                Text(
+                  text = displayName,
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = if (isSelected) Color.White else DarkSlateDeep,
+                  modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                )
+              }
             }
           }
         }
       }
 
-      // 3b. Team Management Banner: Create Team
+
+
+      // 3c. Firebase Sync Banner: Reset Firestore with Local Data (ONE-TIME ADMIN)
       item {
         Surface(
           shape = RoundedCornerShape(16.dp),
-          color = EodDarkSurface,
-          border = BorderStroke(1.dp, EodDarkCardBorder),
+          color = Color(0xFFFFE8D6), // Warm orange tint
+          border = BorderStroke(1.dp, Color(0xFFFB923C)),
           modifier = Modifier.fillMaxWidth()
         ) {
           Row(
@@ -315,28 +345,28 @@ fun AdminDashboardScreen(
           ) {
             Column(modifier = Modifier.weight(1f)) {
               Text(
-                text = "Team Management",
+                text = "🔥 Reset Firebase Data (Admin Only)",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = EodTextPrimary
+                color = Color(0xFFDC2626)
               )
               Spacer(modifier = Modifier.height(2.dp))
               Text(
-                text = "Create new team with unique password for department access",
+                text = "Delete all old Firestore employees and upload 73 new CSV employees",
                 fontSize = 11.sp,
-                color = EodTextSecondary
+                color = WarmTextMuted
               )
             }
 
             Button(
-              onClick = onAddTeamClick,
+              onClick = onResetFirestoreClick,
               shape = RoundedCornerShape(10.dp),
-              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
-              modifier = Modifier.testTag("admin_add_team_btn")
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFB923C)),
+              modifier = Modifier.testTag("admin_reset_firestore_btn")
             ) {
-              Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+              Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Create Team", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+              Text("Reset Firebase", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
           }
         }
@@ -352,14 +382,14 @@ fun AdminDashboardScreen(
           Surface(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(14.dp),
-            color = EodDarkSurface,
-            border = BorderStroke(1.dp, EodDarkCardBorder)
+            color = WarmCardWhite,
+            border = BorderStroke(1.dp, WarmCardBorder)
           ) {
             Column(modifier = Modifier.padding(14.dp)) {
               Text(
                 text = "Submitted today",
                 fontSize = 11.sp,
-                color = EodTextMuted
+                color = WarmTextMuted
               )
               Spacer(modifier = Modifier.height(4.dp))
               Row(verticalAlignment = Alignment.Bottom) {
@@ -367,12 +397,12 @@ fun AdminDashboardScreen(
                   text = "$displaySubmitted",
                   fontSize = 24.sp,
                   fontWeight = FontWeight.Bold,
-                  color = EodTextPrimary
+                  color = DarkSlateDeep
                 )
                 Text(
                   text = " / $displayTotal",
                   fontSize = 14.sp,
-                  color = EodTextMuted,
+                  color = WarmTextMuted,
                   modifier = Modifier.padding(bottom = 3.dp, start = 2.dp)
                 )
               }
@@ -383,14 +413,14 @@ fun AdminDashboardScreen(
           Surface(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(14.dp),
-            color = EodDarkSurface,
-            border = BorderStroke(1.dp, EodDarkCardBorder)
+            color = WarmCardWhite,
+            border = BorderStroke(1.dp, WarmCardBorder)
           ) {
             Column(modifier = Modifier.padding(14.dp)) {
               Text(
                 text = "On leave",
                 fontSize = 11.sp,
-                color = EodTextMuted
+                color = WarmTextMuted
               )
               Spacer(modifier = Modifier.height(4.dp))
               Text(
@@ -406,14 +436,14 @@ fun AdminDashboardScreen(
           Surface(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(14.dp),
-            color = EodDarkSurface,
-            border = BorderStroke(1.dp, EodDarkCardBorder)
+            color = WarmCardWhite,
+            border = BorderStroke(1.dp, WarmCardBorder)
           ) {
             Column(modifier = Modifier.padding(14.dp)) {
               Text(
                 text = "Total Missed",
                 fontSize = 11.sp,
-                color = EodTextMuted
+                color = WarmTextMuted
               )
               Spacer(modifier = Modifier.height(4.dp))
               Text(
@@ -427,7 +457,7 @@ fun AdminDashboardScreen(
         }
       }
 
-      // 5. Behaviour Rollups Header
+      // 5. Live Team Status Header
       item {
         Row(
           modifier = Modifier.fillMaxWidth(),
@@ -436,40 +466,40 @@ fun AdminDashboardScreen(
         ) {
           Column {
             Text(
-              text = "Behaviour Rollups",
+              text = "Live Team Status",
               fontSize = 15.sp,
               fontWeight = FontWeight.Bold,
-              color = EodTextPrimary
+              color = DarkSlateDeep
             )
             Text(
-              text = "Submission rate · Missed days · Late submissions · Streaks",
+              text = "Today's submission status per employee",
               fontSize = 11.sp,
-              color = EodTextMuted
+              color = WarmTextMuted
             )
           }
 
           Surface(
             shape = RoundedCornerShape(8.dp),
-            color = if (sortByPendingFirst) EodDarkSurface else Color.Transparent,
-            border = BorderStroke(1.dp, EodDarkCardBorder),
+            color = if (sortByPendingFirst) WarmCardWhite else Color.Transparent,
+            border = BorderStroke(1.dp, WarmCardBorder),
             modifier = Modifier
               .clickable { sortByPendingFirst = !sortByPendingFirst }
               .testTag("sort_pending_first_btn")
           ) {
             Text(
-              text = if (sortByPendingFirst) "Pending first" else "Worst rate first",
+              text = if (sortByPendingFirst) "Pending first" else "Name order",
               fontSize = 11.sp,
               fontWeight = FontWeight.Medium,
-              color = EodTextSecondary,
+              color = DarkSlateDeep,
               modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
             )
           }
         }
       }
 
-      // 6. Behaviour Rollup List
+      // 6. Live Status List (Today's status only)
       items(filteredMembers, key = { it.employee.employeeId }) { item ->
-        AdminEmployeeBehaviorCard(
+        AdminEmployeeLiveStatusCard(
           item = item,
           onClick = { selectedMemberForDetail = item },
           onNudge = { onSendNudge(item.employee) }
@@ -492,7 +522,7 @@ fun AdminDashboardScreen(
 }
 
 @Composable
-private fun AdminEmployeeBehaviorCard(
+private fun AdminEmployeeLiveStatusCard(
   item: TeamMemberBehaviorItem,
   onClick: () -> Unit,
   onNudge: () -> Unit,
@@ -507,78 +537,77 @@ private fun AdminEmployeeBehaviorCard(
 
   Surface(
     shape = RoundedCornerShape(14.dp),
-    color = EodDarkSurface,
-    border = BorderStroke(1.dp, EodDarkCardBorder),
+    color = WarmCardWhite,
+    border = BorderStroke(1.dp, WarmCardBorder),
     modifier = modifier
       .fillMaxWidth()
       .clickable { onClick() }
       .testTag("admin_employee_card_${emp.employeeId}")
   ) {
-    Column(
+    Row(
       modifier = Modifier
         .fillMaxWidth()
         .padding(14.dp),
-      verticalArrangement = Arrangement.spacedBy(10.dp)
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically
     ) {
-      // Row 1: Initials, Name, Dept Tag, and Status Pill
       Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.weight(1f)
       ) {
-        Row(
-          horizontalArrangement = Arrangement.spacedBy(10.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          modifier = Modifier.weight(1f)
+        Box(
+          modifier = Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(CoralPrimary),
+          contentAlignment = Alignment.Center
         ) {
-          Box(
-            modifier = Modifier
-              .size(38.dp)
-              .clip(CircleShape)
-              .background(EodAvatarBg),
-            contentAlignment = Alignment.Center
-          ) {
-            Text(
-              text = initials,
-              fontSize = 13.sp,
-              fontWeight = FontWeight.Bold,
-              color = EodAvatarText
-            )
-          }
-
-          Column {
-            Row(
-              horizontalArrangement = Arrangement.spacedBy(6.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Text(
-                text = emp.name,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = EodTextPrimary
-              )
-              Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = Color(0xFF1E1B4B),
-                border = BorderStroke(1.dp, Color(0xFF312E81))
-              ) {
-                Text(
-                  text = emp.department,
-                  fontSize = 9.sp,
-                  fontWeight = FontWeight.Bold,
-                  color = Color(0xFFA5B4FC),
-                  modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                )
-              }
-            }
-            Text(
-              text = "${emp.employeeId} · ${emp.designation}",
-              fontSize = 11.sp,
-              color = EodTextMuted
-            )
-          }
+          Text(
+            text = initials,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+          )
         }
 
+        Column {
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = emp.name,
+              fontSize = 14.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = DarkSlateDeep
+            )
+            Surface(
+              shape = RoundedCornerShape(4.dp),
+              color = CoralPrimary.copy(alpha = 0.1f),
+              border = BorderStroke(1.dp, CoralPrimary)
+            ) {
+              Text(
+                text = emp.department,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = CoralPrimary,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+              )
+            }
+          }
+          Text(
+            text = "${emp.employeeId} · ${emp.designation}",
+            fontSize = 11.sp,
+            color = WarmTextMuted
+          )
+        }
+      }
+
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
         // Today's Status Pill
         when (item.todayStatus) {
           "Done" -> {
@@ -624,68 +653,13 @@ private fun AdminEmployeeBehaviorCard(
             }
           }
         }
-      }
-
-      // Row 2: Behaviour Rollup Stats (Submission Rate, Missed Days, Late Submissions, Streak)
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clip(RoundedCornerShape(8.dp))
-          .background(Color(0xFF0F1017))
-          .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        // Submission Rate
-        Column {
-          Text("Rate", fontSize = 9.sp, color = EodTextMuted)
-          Text(
-            "${item.submissionRate}%",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (item.submissionRate >= 80) Color(0xFF34D399) else Color(0xFFF87171)
-          )
-        }
-
-        // Missed Days
-        Column {
-          Text("Missed", fontSize = 9.sp, color = EodTextMuted)
-          Text(
-            "${item.missedCount} d",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (item.missedCount > 0) Color(0xFFF87171) else Color(0xFF9CA3AF)
-          )
-        }
-
-        // Late Submissions
-        Column {
-          Text("Late", fontSize = 9.sp, color = EodTextMuted)
-          Text(
-            "${item.lateCount}",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (item.lateCount > 0) Color(0xFFFBBF24) else Color(0xFF9CA3AF)
-          )
-        }
-
-        // Streak
-        Column {
-          Text("Streak", fontSize = 9.sp, color = EodTextMuted)
-          Text(
-            "🔥 ${item.currentStreak}d",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = if (item.currentStreak >= 5) Color(0xFFFB923C) else Color(0xFF9CA3AF)
-          )
-        }
 
         // Nudge action if pending
         if (item.todayStatus == "Pending") {
           Surface(
             shape = RoundedCornerShape(6.dp),
-            color = Color(0xFF2E1065),
-            border = BorderStroke(1.dp, Color(0xFF5B5CE5)),
+            color = CoralPrimary.copy(alpha = 0.1f),
+            border = BorderStroke(1.dp, CoralPrimary),
             modifier = Modifier.clickable { onNudge() }
           ) {
             Row(
@@ -693,8 +667,8 @@ private fun AdminEmployeeBehaviorCard(
               horizontalArrangement = Arrangement.spacedBy(4.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Icon(Icons.Default.Send, contentDescription = null, tint = Color(0xFFA5B4FC), modifier = Modifier.size(11.dp))
-              Text("Nudge", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFA5B4FC))
+              Icon(Icons.Default.Send, contentDescription = null, tint = CoralPrimary, modifier = Modifier.size(11.dp))
+              Text("Nudge", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = CoralPrimary)
             }
           }
         }
@@ -713,8 +687,8 @@ private fun AdminBehaviorDetailModal(
   Dialog(onDismissRequest = onDismiss) {
     Surface(
       shape = RoundedCornerShape(20.dp),
-      color = EodDarkSurface,
-      border = BorderStroke(1.dp, EodDarkCardBorder),
+      color = WarmCardWhite,
+      border = BorderStroke(1.dp, WarmCardBorder),
       modifier = Modifier
         .fillMaxWidth()
         .padding(16.dp)
@@ -736,21 +710,21 @@ private fun AdminBehaviorDetailModal(
               text = emp.name,
               fontSize = 18.sp,
               fontWeight = FontWeight.Bold,
-              color = EodTextPrimary
+              color = DarkSlateDeep
             )
             Text(
               text = "${emp.department} Team · ${emp.employeeId}",
               fontSize = 12.sp,
-              color = EodTextSecondary
+              color = WarmTextMuted
             )
           }
 
           IconButton(onClick = onDismiss) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = EodTextSecondary)
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
           }
         }
 
-        HorizontalDivider(color = EodDarkCardBorder)
+        HorizontalDivider(color = WarmCardBorder)
 
         // 4 Rollup metrics
         Row(

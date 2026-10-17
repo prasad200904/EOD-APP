@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.DailyEodEntity
 import com.example.data.EmployeeEntity
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.DarkSlateDeep
 import com.example.ui.theme.EodAvatarBg
 import com.example.ui.theme.EodAvatarText
 import com.example.ui.theme.EodDarkBackground
@@ -53,6 +55,10 @@ import com.example.ui.theme.EodMissedPillText
 import com.example.ui.theme.EodTextMuted
 import com.example.ui.theme.EodTextPrimary
 import com.example.ui.theme.EodTextSecondary
+import com.example.ui.theme.WarmCardBorder
+import com.example.ui.theme.WarmCardWhite
+import com.example.ui.theme.WarmCream
+import com.example.ui.theme.WarmTextMuted
 
 data class HistoryRowItem(
   val dayNumber: String,
@@ -134,7 +140,7 @@ fun HistoryScreen(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(WarmCream)
   ) {
     LazyColumn(
       modifier = Modifier
@@ -153,7 +159,7 @@ fun HistoryScreen(
             text = "Your history",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = EodTextPrimary
+            color = DarkSlateDeep
           )
 
           val initials = remember(currentEmployee) {
@@ -164,7 +170,7 @@ fun HistoryScreen(
             modifier = Modifier
               .size(38.dp)
               .clip(CircleShape)
-              .background(EodAvatarBg)
+              .background(CoralPrimary)
               .clickable { onAvatarClick() },
             contentAlignment = Alignment.Center
           ) {
@@ -172,7 +178,7 @@ fun HistoryScreen(
               text = initials.ifEmpty { "RK" },
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold,
-              color = EodAvatarText
+              color = Color.White
             )
           }
         }
@@ -191,8 +197,8 @@ fun HistoryScreen(
             Box(
               modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(if (isSelected) Color.White else EodDarkSurface)
-                .border(1.dp, if (isSelected) Color.White else EodDarkCardBorder, RoundedCornerShape(20.dp))
+                .background(if (isSelected) CoralPrimary else WarmCardWhite)
+                .border(1.dp, if (isSelected) CoralPrimary else WarmCardBorder, RoundedCornerShape(20.dp))
                 .clickable { selectedMonth = m }
                 .padding(horizontal = 18.dp, vertical = 8.dp),
               contentAlignment = Alignment.Center
@@ -201,7 +207,7 @@ fun HistoryScreen(
                 text = m,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color(0xFF191A20) else EodTextSecondary
+                color = if (isSelected) Color.White else DarkSlateDeep
               )
             }
           }
@@ -217,9 +223,9 @@ fun HistoryScreen(
           // Submitted Card
           Surface(
             modifier = Modifier.weight(1f),
-            color = EodDarkSurface,
+            color = WarmCardWhite,
             shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, EodDarkCardBorder)
+            border = androidx.compose.foundation.BorderStroke(1.dp, WarmCardBorder)
           ) {
             Column(
               modifier = Modifier.padding(16.dp),
@@ -228,7 +234,7 @@ fun HistoryScreen(
               Text(
                 text = "Submitted",
                 fontSize = 13.sp,
-                color = EodTextSecondary
+                color = WarmTextMuted
               )
 
               Row(verticalAlignment = Alignment.Bottom) {
@@ -236,13 +242,13 @@ fun HistoryScreen(
                   text = "11",
                   fontSize = 26.sp,
                   fontWeight = FontWeight.Bold,
-                  color = EodTextPrimary
+                  color = DarkSlateDeep
                 )
                 Text(
                   text = " / 12",
                   fontSize = 16.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = EodTextSecondary,
+                  color = WarmTextMuted,
                   modifier = Modifier.padding(bottom = 2.dp)
                 )
               }
@@ -252,9 +258,9 @@ fun HistoryScreen(
           // Current Streak Card
           Surface(
             modifier = Modifier.weight(1f),
-            color = EodDarkSurface,
+            color = WarmCardWhite,
             shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, EodDarkCardBorder)
+            border = androidx.compose.foundation.BorderStroke(1.dp, WarmCardBorder)
           ) {
             Column(
               modifier = Modifier.padding(16.dp),
@@ -263,7 +269,7 @@ fun HistoryScreen(
               Text(
                 text = "Current streak",
                 fontSize = 13.sp,
-                color = EodTextSecondary
+                color = WarmTextMuted
               )
 
               Row(verticalAlignment = Alignment.Bottom) {
@@ -271,13 +277,13 @@ fun HistoryScreen(
                   text = "5",
                   fontSize = 26.sp,
                   fontWeight = FontWeight.Bold,
-                  color = EodTextPrimary
+                  color = DarkSlateDeep
                 )
                 Text(
                   text = " days",
                   fontSize = 16.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = Color(0xFF60A5FA),
+                  color = CoralPrimary,
                   modifier = Modifier.padding(bottom = 2.dp)
                 )
               }
@@ -308,12 +314,12 @@ fun HistoryScreen(
               text = item.dayNumber,
               fontSize = 17.sp,
               fontWeight = FontWeight.Bold,
-              color = EodTextPrimary
+              color = DarkSlateDeep
             )
             Text(
               text = item.dayName,
               fontSize = 12.sp,
-              color = EodTextSecondary
+              color = WarmTextMuted
             )
           }
 
@@ -328,14 +334,14 @@ fun HistoryScreen(
               text = item.title,
               fontSize = 14.sp,
               fontWeight = if (item.isMissed) FontWeight.Normal else FontWeight.SemiBold,
-              color = if (item.isMissed) EodTextSecondary else EodTextPrimary
+              color = if (item.isMissed) WarmTextMuted else DarkSlateDeep
             )
 
             if (item.subtitle.isNotEmpty()) {
               Text(
                 text = item.subtitle,
                 fontSize = 13.sp,
-                color = EodTextSecondary
+                color = WarmTextMuted
               )
             }
           }
@@ -359,14 +365,14 @@ fun HistoryScreen(
             Icon(
               imageVector = Icons.Default.ChevronRight,
               contentDescription = "View detail",
-              tint = EodTextMuted,
+              tint = WarmTextMuted,
               modifier = Modifier.size(20.dp)
             )
           }
         }
 
         HorizontalDivider(
-          color = Color(0xFF1E1F26),
+          color = WarmCardBorder,
           thickness = 0.5.dp
         )
       }
@@ -378,8 +384,8 @@ fun HistoryScreen(
     Dialog(onDismissRequest = { selectedHistoryEod = null }) {
       Surface(
         shape = RoundedCornerShape(16.dp),
-        color = EodDarkSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, EodDarkCardBorder),
+        color = WarmCardWhite,
+        border = androidx.compose.foundation.BorderStroke(1.dp, WarmCardBorder),
         modifier = Modifier.fillMaxWidth()
       ) {
         Column(
@@ -395,7 +401,7 @@ fun HistoryScreen(
               text = "${item.dayName}, ${item.dayNumber} $selectedMonth 2026",
               fontSize = 16.sp,
               fontWeight = FontWeight.Bold,
-              color = EodTextPrimary
+              color = DarkSlateDeep
             )
             if (item.isMissed) {
               Box(
@@ -413,35 +419,35 @@ fun HistoryScreen(
             text = item.title,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = EodTextPrimary
+            color = DarkSlateDeep
           )
 
           if (item.subtitle.isNotEmpty()) {
             Text(
               text = "Log: ${item.subtitle}",
               fontSize = 13.sp,
-              color = EodTextSecondary
+              color = WarmTextMuted
             )
           }
 
           item.rawEod?.let { eod ->
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Project: ${eod.project}", fontSize = 13.sp, color = Color(0xFF60A5FA))
-            Text("Hours Worked: ${eod.hoursWorked}h", fontSize = 13.sp, color = EodTextSecondary)
-            Text("Progress: ${eod.progressPercentage}%", fontSize = 13.sp, color = EodTextSecondary)
-            Text("Work Summary: ${eod.todayWork}", fontSize = 13.sp, color = EodTextPrimary)
+            Text("Project: ${eod.project}", fontSize = 13.sp, color = CoralPrimary)
+            Text("Hours Worked: ${eod.hoursWorked}h", fontSize = 13.sp, color = WarmTextMuted)
+            Text("Progress: ${eod.progressPercentage}%", fontSize = 13.sp, color = WarmTextMuted)
+            Text("Work Summary: ${eod.todayWork}", fontSize = 13.sp, color = DarkSlateDeep)
           }
 
           Spacer(modifier = Modifier.height(8.dp))
 
           Surface(
             shape = RoundedCornerShape(10.dp),
-            color = Color.White,
+            color = CoralPrimary,
             modifier = Modifier
               .fillMaxWidth()
               .clickable { selectedHistoryEod = null }
               .padding(vertical = 10.dp),
-            contentColor = Color.Black
+            contentColor = Color.White
           ) {
             Box(contentAlignment = Alignment.Center) {
               Text("Close", fontWeight = FontWeight.Bold, fontSize = 14.sp)

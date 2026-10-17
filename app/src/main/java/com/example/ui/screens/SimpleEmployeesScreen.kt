@@ -86,6 +86,7 @@ fun SimpleEmployeesScreen(
   teams: List<TeamEntity> = emptyList(),
   currentRole: Role = Role.EMPLOYEE,
   onOpenAddEmployee: (() -> Unit)? = null,
+  onAddTeamClick: (() -> Unit)? = null,
   onToggleEmployeeActive: ((String, Boolean) -> Unit)? = null,
   onDeleteEmployeeAccount: ((String) -> Unit)? = null,
   modifier: Modifier = Modifier
@@ -154,22 +155,6 @@ fun SimpleEmployeesScreen(
                 color = Color(0xFFEADDFF)
               )
             }
-
-            if (currentRole != Role.EMPLOYEE && onOpenAddEmployee != null) {
-              Button(
-                onClick = onOpenAddEmployee,
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                  containerColor = Color.White,
-                  contentColor = Color(0xFF21005D)
-                ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-              ) {
-                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Add", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-              }
-            }
           }
 
           HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
@@ -198,6 +183,48 @@ fun SimpleEmployeesScreen(
               color = Color(0xFFC8E6C9),
               fontWeight = FontWeight.Bold
             )
+          }
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------
+    // 1b. Admin Management Buttons: Add Employee and Team Management
+    // -------------------------------------------------------------------
+    if (currentRole != Role.EMPLOYEE && (onOpenAddEmployee != null || onAddTeamClick != null)) {
+      item {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          if (onOpenAddEmployee != null) {
+            Button(
+              onClick = onOpenAddEmployee,
+              shape = RoundedCornerShape(12.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = WorkPrimary),
+              modifier = Modifier
+                .weight(1f)
+                .testTag("people_add_employee_btn")
+            ) {
+              Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("Add Employee", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+
+          if (onAddTeamClick != null) {
+            Button(
+              onClick = onAddTeamClick,
+              shape = RoundedCornerShape(12.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+              modifier = Modifier
+                .weight(1f)
+                .testTag("people_team_management_btn")
+            ) {
+              Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp))
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("Team Management", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
           }
         }
       }
@@ -270,7 +297,8 @@ fun SimpleEmployeesScreen(
           ) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(12.dp)
+              horizontalArrangement = Arrangement.spacedBy(12.dp),
+              modifier = Modifier.weight(1f)
             ) {
               UserAvatar(name = emp.name, size = 42, backgroundColor = WorkPrimary)
               Column {
@@ -311,7 +339,10 @@ fun SimpleEmployeesScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
               Icon(Icons.Default.Groups, contentDescription = null, tint = WorkPrimary, modifier = Modifier.size(15.dp))
               Text(
                 text = "${emp.team} (${emp.department})",
@@ -334,7 +365,10 @@ fun SimpleEmployeesScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
               Icon(Icons.Default.Work, contentDescription = null, tint = Color(0xFF79747E), modifier = Modifier.size(14.dp))
               Text(
                 text = "Assigned: ${emp.defaultProject}",
@@ -343,7 +377,10 @@ fun SimpleEmployeesScreen(
               )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
               Icon(Icons.Default.Email, contentDescription = null, tint = Color(0xFF79747E), modifier = Modifier.size(12.dp))
               Text(
                 text = emp.email,
