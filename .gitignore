@@ -24,19 +24,38 @@ app/build/
 /.idea/deviceStreaming.xml
 .DS_Store
 
-# Keystores
+# Keystores — NEVER commit these
 *.jks
 *.keystore
 my-upload-key.jks
+workcore-key.jks
+release.keystore
 
-# Firebase Service Account Credentials
+# Firebase — NEVER commit these
+google-services.json
+app/google-services.json
+GoogleService-Info.plist
+
+# Firebase Service Account — NEVER commit these
 serviceAccountKey.json
+service-account-key.json
 *serviceAccount*.json
 *service-account*.json
 scripts/serviceAccountKey.json
 *.key.json
 
+# API keys / secrets — NEVER commit these
+*.env
+.env.local
+.env.production
+secrets.properties
+api_keys.properties
+
 # Scripts temp files
 scripts/temp_passwords.csv
 scripts/node_modules/
+
+# Release APKs (large binary files)
+app/release/*.apk
+app/release/*.aab
 
