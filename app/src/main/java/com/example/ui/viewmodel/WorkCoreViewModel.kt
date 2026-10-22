@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.AppDatabase
+import com.example.data.AuditLogEntity
 import com.example.data.DailyEodEntity
 import com.example.data.DepartmentEntity
 import com.example.data.EmployeeBehaviorMetrics
@@ -16,8 +17,13 @@ import com.example.data.SeedData
 import com.example.data.TeamAnalyticsSummary
 import com.example.data.TeamEntity
 import com.example.data.TeamMemberBehaviorItem
+import com.example.data.TeamMemberDataEntity
+import com.example.data.TeamType
+import com.example.data.CompanyEntity
+import com.example.data.TeamReportSummary
 import com.example.data.WorkCoreRepository
 import com.example.data.firebase.SyncManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +49,7 @@ data class AuthSession(
 
 class WorkCoreViewModel(application: Application) : AndroidViewModel(application) {
   private val database = AppDatabase.getDatabase(application)
+  private val auditLogDao = database.auditLogDao()
   val firebaseDataSource = com.example.data.firebase.FirebaseDataSource(application)
   val repository = WorkCoreRepository(database, firebaseDataSource)
   val syncManager = SyncManager(application, database, firebaseDataSource)
@@ -104,19 +111,30 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val selectedDepartmentCode = MutableStateFlow("ML")
+  val selectedCompanyId = MutableStateFlow("ALL")
 
   val dailyEods: StateFlow<List<DailyEodEntity>> = repository.allDailyEods
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val managerTeamMembers: StateFlow<List<TeamMemberBehaviorItem>> = combine(
     selectedDepartmentCode,
+    selectedCompanyId,
     employees,
     dailyEods
-  ) { dept, emps, eods ->
-    repository.computeManagerTeamMetrics(dept, emps, eods, repository.getTodayDateString())
+  ) { dept, companyId, emps, eods ->
+    // Filter by company first
+    val companyFilteredEmps = if (companyId == "ALL") {
+      emps
+    } else {
+      emps.filter { it.companyId == companyId }
+    }
+    repository.computeManagerTeamMetrics(dept, companyFilteredEmps, eods, repository.getTodayDateString())
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val teams: StateFlow<List<TeamEntity>> = repository.allTeams
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+  val companies: StateFlow<List<CompanyEntity>> = repository.allCompanies
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val notifications: StateFlow<List<NotificationEntity>> = repository.allNotifications
@@ -151,13 +169,18 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
       Role.ADMIN -> emps
       Role.EMPLOYEE -> {
         val dept = currentAuthSession.value?.departmentTeam ?: "GT Team"
-        val deptCode = if (dept.contains("GT", true)) "GT"
-          else if (dept.contains("ML", true)) "ML"
-          else if (dept.contains("DB", true)) "DB"
-          else if (dept.contains("Writing", true)) "Writing"
-          else if (dept.contains("Cyber", true)) "Cyber"
-          else "GT"
-        emps.filter { it.department.equals(deptCode, true) || it.team.contains(deptCode, true) || it.departmentId.contains(deptCode, true) }
+        
+        // Handle AO roles (exact department name match)
+        when (dept) {
+          "Marketing" -> emps.filter { it.department == "Marketing" && it.companyId == "COMP_AO" }
+          "Counsellor" -> emps.filter { it.department == "Counsellor" && it.companyId == "COMP_AO" }
+          "Tele Caller" -> emps.filter { it.department == "Tele Caller" && it.companyId == "COMP_AO" }
+          "Manager" -> emps.filter { it.department == "Manager" && it.companyId == "COMP_AO" }
+          else -> {
+            // Regular Sandspace teams - filter by team name
+            emps.filter { it.team == dept || it.team.contains(dept, true) }
+          }
+        }
       }
     }
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -254,6 +277,16 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     allSummaries.filter { it.teamName in teamNames }
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+  // Team Reports (Custom Form Aggregations)
+  val teamReports: StateFlow<List<TeamReportSummary>> = combine(
+    teams,
+    employees,
+    dailyEods,
+    companies
+  ) { tms, emps, eods, comps ->
+    repository.computeTeamReports(tms, emps, eods, comps, repository.getTodayDateString())
+  }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
   // Missing EOD Alerts (Role & Team isolated, excluding On Leave users)
   val missingEodAlerts: StateFlow<List<MissingEodAlertGroup>> = combine(
     employees,
@@ -340,8 +373,14 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
 
       if (result.isSuccess) {
         snackbarMessage.value = if (isEdit) "EOD for $date updated successfully!" else "Today's EOD submitted successfully!"
+        // Track EOD submission
+        com.example.util.Analytics.logEodSubmitted(
+          employeeId = employeeId,
+          team = currentDepartmentTeam.value ?: "unknown",
+          formType = "STANDARD",
+          isEdit = isEdit
+        )
         closeSubmitEod()
-        // Trigger background sync to cloud
         syncManager.syncPendingToCloud()
       } else {
         snackbarMessage.value = result.exceptionOrNull()?.message ?: "Error submitting EOD"
@@ -415,10 +454,65 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
       )
       currentTab.value = AppTab.DASHBOARD
       snackbarMessage.value = "Signed in to $teamName roster"
+      // Track team login
+      val company = if (teamName.contains("AO") || 
+        listOf("Marketing","Counsellor","Tele Caller","Manager").any { teamName.contains(it) })
+        "AO" else "SS"
+      com.example.util.Analytics.logLogin(team = teamName, company = company)
       
       // AUTO-SYNC: Fetch employees from Firebase after successful login
       launch {
         android.util.Log.d("WorkCoreAuth", "🔄 Auto-syncing employees from Firebase...")
+        val syncResult = repository.syncEmployeesFromFirebase()
+        syncResult.fold(
+          onSuccess = { count ->
+            if (count > 0) {
+              android.util.Log.i("WorkCoreAuth", "✅ Synced $count employees from Firebase")
+            }
+          },
+          onFailure = { error ->
+            android.util.Log.w("WorkCoreAuth", "⚠️ Sync failed: ${error.message}")
+          }
+        )
+      }
+      
+      onResult(true, null)
+    }
+  }
+
+  fun loginAORole(
+    role: String, // "Marketing", "Counsellor", "Tele Caller"
+    passcode: String,
+    onResult: (Boolean, String?) -> Unit
+  ) {
+    viewModelScope.launch {
+      // Validate passcode
+      val validPasscodes = mapOf(
+        "Marketing" to "marketing123",
+        "Counsellor" to "counsellor123",
+        "Tele Caller" to "telecaller123"
+      )
+      
+      if (validPasscodes[role] != passcode) {
+        onResult(false, "Invalid passcode for $role")
+        return@launch
+      }
+      
+      // Set AO role session
+      currentDepartmentTeam.value = role
+      currentRole.value = Role.EMPLOYEE
+      activeRosterEmployee.value = null
+      currentAuthSession.value = AuthSession(
+        role = Role.EMPLOYEE,
+        employee = null,
+        departmentTeam = role
+      )
+      currentTab.value = AppTab.DASHBOARD
+      snackbarMessage.value = "Signed in to $role roster (AO)"
+      
+      // Auto-sync employees from Firebase
+      launch {
+        android.util.Log.d("WorkCoreAuth", "🔄 Auto-syncing AO employees from Firebase...")
         val syncResult = repository.syncEmployeesFromFirebase()
         syncResult.fold(
           onSuccess = { count ->
@@ -473,6 +567,37 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
         syncManager.syncPendingToCloud()
       } else {
         snackbarMessage.value = result.exceptionOrNull()?.message ?: "Failed to submit EOD"
+      }
+    }
+  }
+
+  fun submitCustomEod(
+    employee: EmployeeEntity,
+    date: String,
+    customFormData: String
+  ) {
+    viewModelScope.launch {
+      val result = repository.submitCustomEod(
+        employeeId = employee.employeeId,
+        employeeName = employee.name,
+        teamId = employee.teamId ?: "",
+        companyId = employee.companyId ?: "",
+        date = date,
+        customFormData = customFormData
+      )
+      if (result.isSuccess) {
+        snackbarMessage.value = "EOD submitted successfully for ${employee.name}!"
+        // Track custom EOD submission
+        com.example.util.Analytics.logEodSubmitted(
+          employeeId = employee.employeeId,
+          team = employee.team,
+          formType = employee.department, // "Marketing", "Counsellor", "Tele Caller"
+          isEdit = false
+        )
+        activeRosterEmployee.value = null
+        syncManager.syncPendingToCloud()
+      } else {
+        snackbarMessage.value = result.exceptionOrNull()?.message ?: "Failed to submit custom EOD"
       }
     }
   }
@@ -646,6 +771,30 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     }
   }
 
+  /**
+   * ONE-TIME ADMIN FUNCTION: Reset Firebase with local CSV data
+   * Deletes all old Firestore employees and uploads 73 new ones from SeedData
+   */
+  fun resetFirestoreWithLocalData(onResult: (Boolean, String) -> Unit) {
+    viewModelScope.launch {
+      android.util.Log.i("WorkCoreViewModel", "🔥 Admin triggered Firebase reset...")
+      val result: Result<String> = repository.resetFirestoreWithLocalData()
+      result.fold(
+        onSuccess = { message: String ->
+          android.util.Log.i("WorkCoreViewModel", message)
+          snackbarMessage.value = message
+          onResult(true, message)
+        },
+        onFailure = { error: Throwable ->
+          val errorMsg = "Reset failed: ${error.message}"
+          android.util.Log.e("WorkCoreViewModel", errorMsg)
+          snackbarMessage.value = errorMsg
+          onResult(false, errorMsg)
+        }
+      )
+    }
+  }
+
   fun markAllNotificationsRead() {
     viewModelScope.launch {
       repository.markAllNotificationsAsRead()
@@ -703,6 +852,8 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   }
 
   fun logout() {
+    val team = currentDepartmentTeam.value ?: currentAuthSession.value?.departmentTeam ?: "unknown"
+    com.example.util.Analytics.logLogout(team = team)
     currentAuthSession.value = null
     currentTab.value = AppTab.DASHBOARD
     snackbarMessage.value = "Logged out successfully."
@@ -720,6 +871,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     designation: String,
     departmentCode: String,
     sendEmailLink: Boolean,
+    teamSpecificData: Map<TeamType, TeamMemberDataEntity?> = emptyMap(),
     onSuccess: (String) -> Unit = {},
     onError: (String) -> Unit = {}
   ) {
@@ -749,10 +901,31 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
         val msg = "Employee $name added to $departmentCode successfully! Assigned ID: $assignedEmployeeId"
         snackbarMessage.value = msg
         showAddEmployeeByManagerDialog.value = false
-        
-        // Trigger immediate sync to Firebase so other devices get the update
-        syncManager.syncPendingToCloud()
-        
+
+        // Save team-specific data with the real employee ID
+        viewModelScope.launch {
+          teamSpecificData.forEach { (teamType, data) ->
+            if (data != null) {
+              repository.saveTeamMemberData(
+                assignedEmployeeId,
+                teamType.departmentCode,
+                data.copy(employeeId = assignedEmployeeId)
+              )
+              auditLogDao.insert(
+                AuditLogEntity(
+                  userId = assignedEmployeeId,
+                  action = "SAVE_TEAM_DATA",
+                  entityType = "TEAM_MEMBER_DATA",
+                  entityId = "${assignedEmployeeId}-${teamType.departmentCode}",
+                  description = "Saved ${teamType.displayName} data for $assignedEmployeeId"
+                )
+              )
+            }
+          }
+          snackbarMessage.value = snackbarMessage.value.plus(" ${teamSpecificData.count { it.value != null }} team type(s) saved.")
+          syncManager.syncPendingToCloud()
+        }
+
         onSuccess(msg)
       }.onFailure { err ->
         val msg = err.message ?: "Failed to create employee."
@@ -850,11 +1023,11 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
 
       res.onSuccess { queryResult ->
         if (reset) {
-          historyEodList.value = queryResult.items
+          historyEodList.value = queryResult.eods
         } else {
-          historyEodList.value = historyEodList.value + queryResult.items
+          historyEodList.value = historyEodList.value + queryResult.eods
         }
-        historyLastDoc.value = queryResult.lastDocumentSnapshot
+        historyLastDoc.value = queryResult.lastDocument
         historyHasMore.value = queryResult.hasMore
       }.onFailure { err ->
         historyErrorMessage.value = err.message ?: "Failed to fetch EOD history from Firestore."
@@ -992,6 +1165,54 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
    */
   fun hasAdminAccount(): Boolean {
     return employees.value.any { it.role == Role.ADMIN.name }
+  }
+
+  fun loadTeamMemberData(employeeId: String, teamType: TeamType, onResult: (TeamMemberDataEntity?) -> Unit) {
+    viewModelScope.launch(Dispatchers.IO) {
+      onResult(repository.getTeamDataByEmployeeId(employeeId, teamType.departmentCode))
+    }
+  }
+
+  fun saveTeamMemberData(employeeId: String, teamType: TeamType, data: TeamMemberDataEntity) {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        repository.saveTeamMemberData(employeeId, teamType.departmentCode, data)
+        auditLogDao.insert(
+          AuditLogEntity(
+            userId = employeeId,
+            action = "SAVE_TEAM_DATA",
+            entityType = "TEAM_MEMBER_DATA",
+            entityId = "$employeeId-${teamType.departmentCode}",
+            description = "Saved ${teamType.displayName} data for $employeeId"
+          )
+        )
+        snackbarMessage.value = "${teamType.displayName} data saved successfully."
+      } catch (e: Exception) {
+        android.util.Log.e("WorkCoreViewModel", "Error saving team member data", e)
+        snackbarMessage.value = "Failed to save ${teamType.displayName} data."
+      }
+    }
+  }
+
+  fun deleteTeamMemberData(employeeId: String, teamType: TeamType) {
+    viewModelScope.launch(Dispatchers.IO) {
+      try {
+        repository.deleteTeamDataByEmployeeId(employeeId, teamType.departmentCode)
+        auditLogDao.insert(
+          AuditLogEntity(
+            userId = employeeId,
+            action = "DELETE_TEAM_DATA",
+            entityType = "TEAM_MEMBER_DATA",
+            entityId = "$employeeId-${teamType.departmentCode}",
+            description = "Deleted ${teamType.displayName} data for $employeeId"
+          )
+        )
+        snackbarMessage.value = "${teamType.displayName} data deleted."
+      } catch (e: Exception) {
+        android.util.Log.e("WorkCoreViewModel", "Error deleting team member data", e)
+        snackbarMessage.value = "Failed to delete ${teamType.displayName} data."
+      }
+    }
   }
 }
 
