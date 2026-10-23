@@ -847,7 +847,7 @@ class WorkCoreRepository(
           return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Access denied: Account is not an administrator."))
         }
       }
-      Role.EMPLOYEE -> {
+      Role.EMPLOYEE, Role.MANAGER -> {
         if (!session.isEmployee && !session.isManager && !session.isAdmin) {
           authRepository.signOut()
           return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Access denied: Not authorized as an employee."))

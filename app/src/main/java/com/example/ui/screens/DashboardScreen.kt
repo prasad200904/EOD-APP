@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -131,7 +132,7 @@ fun DashboardScreen(
         modifier = Modifier
           .fillMaxWidth()
           .clip(RoundedCornerShape(20.dp)),
-        color = Color(0xFF21005D)
+        color = DarkSlateDeep
       ) {
         Row(
           modifier = Modifier
@@ -144,6 +145,7 @@ fun DashboardScreen(
             Text(
               text = when (currentRole) {
                 Role.ADMIN -> "Management Analytics Dashboard"
+                Role.MANAGER -> "Team Analytics Dashboard"
                 Role.EMPLOYEE -> "My Daily EOD Tracker"
               },
               fontSize = 18.sp,
@@ -167,7 +169,7 @@ fun DashboardScreen(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
               containerColor = if (myTodayEod != null) Color.White.copy(alpha = 0.2f) else Color.White,
-              contentColor = if (myTodayEod != null) Color.White else Color(0xFF21005D)
+              contentColor = if (myTodayEod != null) Color.White else DarkSlateDeep
             ),
             modifier = Modifier.testTag("dashboard_submit_eod_cta")
           ) {
@@ -203,7 +205,7 @@ fun DashboardScreen(
               text = "Admin Team & Manager Operations",
               fontWeight = FontWeight.Bold,
               fontSize = 13.sp,
-              color = Color(0xFF21005D)
+              color = DarkSlateDeep
             )
             Row(
               modifier = Modifier.fillMaxWidth(),
@@ -266,7 +268,7 @@ fun DashboardScreen(
           Button(
             onClick = { onNavigateTab(AppTab.DOWNLOAD) },
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF21005D)),
+            colors = ButtonDefaults.buttonColors(containerColor = DarkSlateDeep),
             modifier = Modifier.weight(1f)
           ) {
             Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(15.dp))
@@ -307,7 +309,7 @@ fun DashboardScreen(
             count = "${summary.totalEmployees}",
             subtitle = "${summary.activeEmployees} active workforce",
             backgroundColor = Color(0xFFF3E7FF),
-            textColor = Color(0xFF21005D),
+            textColor = DarkSlateDeep,
             borderColor = WorkOutlineVariant,
             modifier = Modifier
               .weight(1f)
@@ -319,7 +321,7 @@ fun DashboardScreen(
             count = "${summary.todayEodSubmitted}",
             subtitle = "${summary.eodSubmissionRate}% reporting rate",
             backgroundColor = Color(0xFFE8F5E9),
-            textColor = Color(0xFF1B5E20),
+            textColor = Color(0xFF10B981),
             borderColor = WorkOutlineVariant,
             modifier = Modifier
               .weight(1f)
