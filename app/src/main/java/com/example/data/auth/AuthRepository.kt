@@ -30,7 +30,7 @@ open class AuthRepository(
     val currentUser: FirebaseUser?
         get() = auth?.currentUser
 
-    suspend fun signIn(email: String, password: String): Result<VerifiedSession> {
+    open suspend fun signIn(email: String, password: String): Result<VerifiedSession> {
         val authInstance = auth ?: return Result.failure(
             IllegalStateException("Firebase Auth is not available.")
         )
@@ -66,7 +66,7 @@ open class AuthRepository(
         }
     }
 
-    suspend fun readSession(forceRefresh: Boolean = false): VerifiedSession? {
+    open suspend fun readSession(forceRefresh: Boolean = false): VerifiedSession? {
         val authInstance = auth ?: return null
         val user = authInstance.currentUser ?: return null
         return try {
@@ -94,12 +94,12 @@ open class AuthRepository(
         }
     }
 
-    suspend fun sendPasswordReset(email: String): Result<Unit> {
-        val authInstance = auth ?: return Result.success(Unit)
+    open suspend fun sendPasswordReset(email: String): Result<Unit> {
         val cleanEmail = email.trim()
         if (cleanEmail.isEmpty()) {
             return Result.failure(IllegalArgumentException("Email is required."))
         }
+        val authInstance = auth ?: return Result.success(Unit)
         return try {
             authInstance.sendPasswordResetEmail(cleanEmail).await()
             Result.success(Unit)
@@ -109,7 +109,7 @@ open class AuthRepository(
         }
     }
 
-    fun signOut() {
+    open fun signOut() {
         auth?.signOut()
     }
 }

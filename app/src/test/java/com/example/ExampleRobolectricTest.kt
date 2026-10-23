@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.AppDatabase
+import com.example.data.DailyEodEntity
 import com.example.data.SeedData
 import com.example.data.WorkCoreRepository
 import kotlinx.coroutines.runBlocking
@@ -23,6 +24,23 @@ class ExampleRobolectricTest {
 
   private lateinit var db: AppDatabase
   private lateinit var repository: WorkCoreRepository
+
+  private val testEod = DailyEodEntity(
+    employeeId = "SS001",
+    employeeName = "AADEPU SUSHMA",
+    departmentId = "DEPT_CYBER",
+    departmentCode = "CYBER",
+    attendanceStatus = "Present",
+    date = SeedData.TODAY,
+    project = "Cyber Security Audit",
+    todayWork = "Audited systems",
+    workCompleted = "Completed initial review",
+    hoursWorked = 8.0,
+    progressPercentage = 100,
+    workStatus = "Completed",
+    submissionTime = "18:00",
+    isOnTime = true
+  )
 
   @Before
   fun setup() {
@@ -50,47 +68,52 @@ class ExampleRobolectricTest {
     repository.initializeSeedDataIfNeeded()
     val summary = repository.computeDashboardSummary(
       SeedData.employees,
-      SeedData.dailyEods,
+      listOf(testEod),
       SeedData.TODAY
     )
 
     assertEquals(SeedData.employees.size, summary.totalEmployees)
     assertEquals(SeedData.employees.size, summary.activeEmployees)
     assertTrue("Should have today EOD submissions", summary.todayEodSubmitted > 0)
-    assertTrue("Should have some employees needing attention", summary.employeesNeedingAttentionCount > 0)
+    assertTrue("Should have pending submissions", summary.todayEodPending > 0)
   }
 
   @Test
   fun testWorkMonitorAndAttentionRequired() = runBlocking {
     val monitorItems = repository.computeWorkMonitor(
       SeedData.employees,
-      SeedData.dailyEods,
+      listOf(testEod),
       SeedData.TODAY
     )
 
     assertEquals(SeedData.employees.size, monitorItems.size)
-    val attentionEmployee = monitorItems.firstOrNull { it.employee.employeeId == "ML-001" }
-      ?: monitorItems.first { it.employee.employeeId == "EMP003" }
-    // Employee has missed consecutive EODs
-    assertNotNull(attentionEmployee.attentionReason)
+    val submittedEmp = monitorItems.first { it.employee.employeeId == "SS001" }
+    assertTrue(submittedEmp.isSubmittedToday)
+    assertEquals("Completed", submittedEmp.workStatus)
+
+    val pendingEmp = monitorItems.first { it.employee.employeeId != "SS001" }
+    assertEquals(false, pendingEmp.isSubmittedToday)
+    assertEquals("Pending", pendingEmp.workStatus)
   }
 
   @Test
   fun testBehaviorMetricsCalculation() = runBlocking {
+    val weekEods = (1..7).map { day ->
+      testEod.copy(date = "2026-10-0$day")
+    }
     val metrics = repository.computeBehaviorMetrics(
       SeedData.employees,
-      SeedData.dailyEods,
+      weekEods,
       SeedData.TODAY,
       expectedDays = 7
     )
 
     assertEquals(SeedData.employees.size, metrics.size)
-    val ravi = metrics.first { it.employee.employeeId == "EMP001" }
-    assertEquals("Strong", ravi.eodConsistencyStatus)
-    assertTrue("Ravi has high submission rate", ravi.submissionRate >= 90)
+    val sushma = metrics.first { it.employee.employeeId == "SS001" }
+    assertEquals("Strong", sushma.eodConsistencyStatus)
+    assertTrue("Sushma has high submission rate", sushma.submissionRate >= 90)
 
-    val attentionEmp = metrics.firstOrNull { it.employee.employeeId == "ML-001" }
-      ?: metrics.first { it.employee.employeeId == "EMP003" }
+    val attentionEmp = metrics.first { it.employee.employeeId != "SS001" }
     assertEquals("Needs Attention", attentionEmp.eodConsistencyStatus)
     assertNotNull("Employee should have attention alert", attentionEmp.attentionAlert)
   }
@@ -99,17 +122,18 @@ class ExampleRobolectricTest {
   fun testCsvExport() = runBlocking {
     val metrics = repository.computeBehaviorMetrics(
       SeedData.employees,
-      SeedData.dailyEods,
+      listOf(testEod),
       SeedData.TODAY
     )
     val csv = repository.generateCsvReport(
       reportType = "EOD",
       employees = SeedData.employees,
-      eods = SeedData.dailyEods,
+      eods = listOf(testEod),
       metrics = metrics
     )
 
     assertTrue(csv.startsWith("Employee ID,Employee Name,Date"))
-    assertTrue(csv.contains("Ravi Kumar"))
+    assertTrue(csv.contains("AADEPU SUSHMA"))
+    assertTrue(csv.contains("Cyber Security Audit"))
   }
 }

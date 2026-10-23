@@ -949,14 +949,15 @@ class WorkCoreRepository(
 
     when (reportType.uppercase()) {
       "EOD" -> {
-        sb.append("Name,Date,Project Title,Description,Status\n")
+        sb.append("Employee ID,Employee Name,Date,Project Title,Description,Status\n")
         eods.sortedByDescending { it.date }.forEach { eod ->
+          val empId = "\"${eod.employeeId.replace("\"", "\"\"")}\""
           val name = "\"${eod.employeeName.replace("\"", "\"\"")}\""
           val date = eod.date
           val project = "\"${eod.project.replace("\"", "\"\"")}\""
           val description = "\"${eod.todayWork.replace("\"", "\"\"")}\""
           val status = eod.workStatus
-          sb.append("$name,$date,$project,$description,$status\n")
+          sb.append("$empId,$name,$date,$project,$description,$status\n")
         }
       }
       else -> {
