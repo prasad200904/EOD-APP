@@ -82,6 +82,43 @@ data class TeamAnalyticsSummary(
   val blockedCount: Int
 )
 
+data class TeamReportSummary(
+  val teamId: String,
+  val teamName: String,
+  val companyName: String,
+  val eodFormType: String,
+  val totalMembers: Int,
+  val todaySubmissions: Int,
+  val customMetrics: CustomTeamMetrics? = null
+)
+
+data class CustomTeamMetrics(
+  // Telecalling specific
+  val totalCalls: Int = 0,
+  val totalFollowUps: Int = 0,
+  val totalConversions: Int = 0,
+  val conversionRate: Double = 0.0,
+  
+  // Counsellor specific
+  val totalStudents: Int = 0,
+  val studentsByCountry: Map<String, Int> = emptyMap(),
+  val studentsByStatus: Map<String, Int> = emptyMap(),
+  
+  // Marketing specific
+  val totalCollegeVisits: Int = 0,
+  val collegesVisited: List<String> = emptyList(),
+  
+  // General
+  val submissionsList: List<CustomFormSubmission> = emptyList()
+)
+
+data class CustomFormSubmission(
+  val employeeName: String,
+  val date: String,
+  val formData: String,
+  val submissionTime: String
+)
+
 data class DashboardSummary(
   val totalEmployees: Int,
   val activeEmployees: Int,
@@ -107,15 +144,18 @@ class WorkCoreRepository(
   private val notificationDao = database.notificationDao()
   private val auditLogDao = database.auditLogDao()
   private val companyConfigDao = database.companyConfigDao()
+  private val teamMemberDataDao = database.teamMemberDataDao()
+  private val companyDao = database.companyDao()
 
   val allDailyEods: Flow<List<DailyEodEntity>> = dailyEodDao.getAllEods()
   val allEmployees: Flow<List<EmployeeEntity>> = employeeDao.getAllEmployees()
   val allTeams: Flow<List<TeamEntity>> = teamDao.getAllTeams()
+  val allCompanies: Flow<List<CompanyEntity>> = companyDao.getAllCompanies()
   val allNotifications: Flow<List<NotificationEntity>> = notificationDao.getAllNotifications()
   val allDepartments: Flow<List<DepartmentEntity>> = departmentDao.getAllDepartments()
   val recentAuditLogs: Flow<List<AuditLogEntity>> = auditLogDao.getRecentLogs()
 
-  // PRODUCTION MODE - Only creates admin account and departments, no demo data
+  // PRODUCTION MODE - Creates admin, departments, teams, and ALL 73 real employees from CSV
   suspend fun initializeSeedDataIfNeeded() = withContext(Dispatchers.IO) {
     android.util.Log.d("WorkCoreRepository", "🚀 Starting database initialization...")
     
@@ -124,31 +164,13 @@ class WorkCoreRepository(
     if (existingDepts.isEmpty()) {
       android.util.Log.d("WorkCoreRepository", "📦 Initializing departments...")
       departmentDao.insertAll(SeedData.departments)
+      android.util.Log.i("WorkCoreRepository", "✅ ${SeedData.departments.size} departments created")
     } else {
       android.util.Log.d("WorkCoreRepository", "✓ Departments already exist: ${existingDepts.size} departments")
     }
     
     // Purge any lingering sample demo data from previous builds
     purgeAllSampleData()
-
-    // Always ensure admin exists (critical for app to function)
-    val existing = employeeDao.getAllEmployees().first()
-    val hasAdmin = existing.any { it.employeeId == "ADMIN" }
-    
-    if (!hasAdmin) {
-      android.util.Log.d("WorkCoreRepository", "📦 Creating admin account...")
-      val adminEmp = SeedData.employees.first { it.employeeId == "ADMIN" }
-      employeeDao.insert(adminEmp)
-      android.util.Log.i("WorkCoreRepository", "✅ Admin account created: admin / admin123")
-    } else {
-      android.util.Log.d("WorkCoreRepository", "✓ Admin account exists")
-    }
-    
-    // Ensure company config exists
-    val config = companyConfigDao.getConfig()
-    if (config == null) {
-      companyConfigDao.saveConfig(SeedData.companyConfig)
-    }
     
     // Initialize teams with passwords
     val existingTeams = teamDao.getAllTeams().first()
@@ -159,8 +181,31 @@ class WorkCoreRepository(
     } else {
       android.util.Log.d("WorkCoreRepository", "✓ Teams already exist: ${existingTeams.size} teams")
     }
+
+    // Load ALL 73 real employees from CSV (ADMIN + SS001-SS044 + AO001-AO029)
+    val existing = employeeDao.getAllEmployees().first()
+    if (existing.isEmpty()) {
+      android.util.Log.d("WorkCoreRepository", "📦 Loading all 73 employees from SeedData...")
+      employeeDao.insertAll(SeedData.employees)
+      android.util.Log.i("WorkCoreRepository", "✅ ${SeedData.employees.size} employees loaded (ADMIN + 44 SS + 29 AO)")
+    } else {
+      android.util.Log.d("WorkCoreRepository", "✓ Employees already exist: ${existing.size} employees")
+      // If we have ADMIN but missing real employees, add them
+      if (existing.size == 1 && existing.any { it.employeeId == "ADMIN" }) {
+        android.util.Log.d("WorkCoreRepository", "📦 Found only ADMIN, adding 72 real employees...")
+        val realEmployees = SeedData.employees.filter { it.employeeId != "ADMIN" }
+        employeeDao.insertAll(realEmployees)
+        android.util.Log.i("WorkCoreRepository", "✅ ${realEmployees.size} real employees added")
+      }
+    }
     
-    android.util.Log.i("WorkCoreRepository", "✅ Database initialization complete")
+    // Ensure company config exists
+    val config = companyConfigDao.getConfig()
+    if (config == null) {
+      companyConfigDao.saveConfig(SeedData.companyConfig)
+    }
+    
+    android.util.Log.i("WorkCoreRepository", "✅ Database initialization complete with ${SeedData.employees.size} total employees")
   }
 
   suspend fun purgeAllSampleData() = withContext(Dispatchers.IO) {
@@ -262,6 +307,15 @@ class WorkCoreRepository(
         )
       )
 
+      // Upload to Firestore so other devices see it immediately
+      val savedEod = dailyEodDao.getEod(employeeId, date)
+      if (savedEod != null) {
+        firebaseDataSource?.uploadEod(savedEod)
+          ?.onFailure { e ->
+            android.util.Log.w("WorkCoreRepository", "EOD saved locally but Firebase upload failed: ${e.message}")
+          }
+      }
+
       Result.success(id)
     } catch (e: Exception) {
       android.util.Log.e("WorkCoreRepository", "Error saving EOD: ${e.message}", e)
@@ -294,6 +348,81 @@ class WorkCoreRepository(
       progressPercentage = progressPercentage,
       workStatus = workStatus
     )
+  }
+
+  suspend fun submitCustomEod(
+    employeeId: String,
+    employeeName: String,
+    teamId: String,
+    companyId: String,
+    date: String,
+    customFormData: String
+  ): Result<Long> = withContext(Dispatchers.IO) {
+    try {
+      // Get team info to determine eodFormType
+      val team = teamDao.getAllTeams().first().firstOrNull { it.teamId == teamId }
+      val eodFormType = team?.eodFormType ?: "STANDARD"
+      
+      val existing = dailyEodDao.getEod(employeeId, date)
+      val submissionTime = existing?.submissionTime ?: getCurrentTimeString()
+      val cutoffTime = "18:30"
+      val isOnTime = submissionTime <= cutoffTime
+
+      val eodEntity = DailyEodEntity(
+        id = existing?.id ?: 0,
+        employeeId = employeeId,
+        employeeName = employeeName,
+        date = date,
+        project = "Custom Form - $eodFormType",
+        todayWork = "See custom form data",
+        workCompleted = "See custom form data",
+        hoursWorked = 8.0, // Default for custom forms
+        progressPercentage = 100, // Assume completion if submitted
+        workStatus = "Completed",
+        blockers = "",
+        remarks = "",
+        tomorrowPlan = "",
+        submissionTime = submissionTime,
+        isOnTime = isOnTime,
+        submittedAt = existing?.submittedAt ?: System.currentTimeMillis(),
+        updatedAt = System.currentTimeMillis(),
+        teamId = teamId,
+        companyId = companyId,
+        eodFormType = eodFormType,
+        customFormData = customFormData
+      )
+
+      val id = if (existing != null) {
+        dailyEodDao.update(eodEntity)
+        existing.id
+      } else {
+        dailyEodDao.insert(eodEntity)
+      }
+
+      auditLogDao.insert(
+        AuditLogEntity(
+          userId = employeeId,
+          action = if (existing != null) "UPDATE_CUSTOM_EOD" else "SUBMIT_CUSTOM_EOD",
+          entityType = "DAILY_EOD",
+          entityId = "$employeeId-$date",
+          description = "$employeeName submitted $eodFormType EOD for $date"
+        )
+      )
+
+      // Upload to Firestore so other devices see it immediately
+      val savedEod = dailyEodDao.getEod(employeeId, date)
+      if (savedEod != null) {
+        firebaseDataSource?.uploadEod(savedEod)
+          ?.onFailure { e ->
+            android.util.Log.w("WorkCoreRepository", "Custom EOD saved locally but Firebase upload failed: ${e.message}")
+          }
+      }
+
+      Result.success(id)
+    } catch (e: Exception) {
+      android.util.Log.e("WorkCoreRepository", "Error saving custom EOD: ${e.message}", e)
+      Result.failure(e)
+    }
   }
 
   suspend fun deleteEod(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
@@ -442,6 +571,28 @@ class WorkCoreRepository(
       syncEmployeeToFirebase(employee.copy(isActive = !currentActive))
     }
   }
+
+  // ── Test helper methods ───────────────────────────────────────────
+
+  /** Authenticate by team name + password. Used by tests and team login flow. */
+  suspend fun authenticateByTeam(teamName: String, password: String): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      val team = teamDao.getAllTeams().first()
+        .firstOrNull { it.name.equals(teamName, ignoreCase = true) }
+        ?: return@withContext Result.failure(IllegalArgumentException("Team '$teamName' not found"))
+      if (team.teamPassword == password) Result.success(Unit)
+      else Result.failure(IllegalArgumentException("Invalid password for $teamName"))
+    }
+
+  /** Get employees belonging to a specific team. Used by tests and roster screens. */
+  suspend fun getEmployeesByTeam(teamName: String): List<EmployeeEntity> =
+    withContext(Dispatchers.IO) {
+      employeeDao.getAllEmployees().first().filter { emp ->
+        emp.role == "EMPLOYEE" &&
+        (emp.team.equals(teamName, ignoreCase = true) ||
+         emp.department.equals(teamName, ignoreCase = true))
+      }
+    }
 
   suspend fun deleteEmployee(empId: String): Result<Unit> = withContext(Dispatchers.IO) {
     try {
@@ -839,12 +990,31 @@ class WorkCoreRepository(
     todayDate: String = getTodayDateString()
   ): List<TeamMemberBehaviorItem> {
     val todayEods = dailyEods.filter { it.date == todayDate }.associateBy { it.employeeId }
-    
+
+    // Code → full team/department name mapping
+    fun codeMatchesEmployee(code: String, emp: EmployeeEntity): Boolean {
+      if (code == "ALL" || code.isBlank()) return true
+      val t = emp.team
+      val d = emp.department
+      return when (code.uppercase()) {
+        "ALL"        -> true
+        "GT"         -> t.contains("General", ignoreCase = true) || d.contains("General", ignoreCase = true)
+        "ML"         -> t.contains("ML", ignoreCase = true) || d.contains("ML", ignoreCase = true)
+        "DB"         -> t.contains("DB", ignoreCase = true) || d.contains("DB", ignoreCase = true)
+        "CYBER"      -> t.contains("Cyber", ignoreCase = true) || d.contains("Cyber", ignoreCase = true)
+        "WRITING"    -> t.contains("Writing", ignoreCase = true) || d.contains("Writing", ignoreCase = true)
+        "TEGA"       -> t.contains("TEGA", ignoreCase = true) || d.contains("TEGA", ignoreCase = true)
+        "TELECALLER" -> t.contains("Tele", ignoreCase = true) || d.contains("Tele", ignoreCase = true)
+        "COUNSELLOR" -> t.contains("Counsel", ignoreCase = true) || d.contains("Counsel", ignoreCase = true)
+        "MARKETING"  -> t.contains("Marketing", ignoreCase = true) || d.contains("Marketing", ignoreCase = true)
+        "MANAGER"    -> t.contains("Manager", ignoreCase = true) || d.contains("Manager", ignoreCase = true)
+        else         -> t.equals(code, ignoreCase = true) || d.equals(code, ignoreCase = true)
+      }
+    }
+
     return employees
       .filter { emp ->
-        emp.role == Role.EMPLOYEE.name &&
-        (emp.department.equals(departmentCode, ignoreCase = true) ||
-         emp.team.contains(departmentCode, ignoreCase = true))
+        emp.role == Role.EMPLOYEE.name && codeMatchesEmployee(departmentCode, emp)
       }
       .map { emp ->
         val todayEod = todayEods[emp.employeeId]
@@ -852,7 +1022,6 @@ class WorkCoreRepository(
           todayEod != null -> "Done"
           else -> "Pending"
         }
-        
         TeamMemberBehaviorItem(
           employee = emp,
           initials = emp.name.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("").uppercase(),
@@ -1035,6 +1204,159 @@ class WorkCoreRepository(
     )
   }
 
+  fun computeTeamReports(
+    teams: List<TeamEntity>,
+    employees: List<EmployeeEntity>,
+    eods: List<DailyEodEntity>,
+    companies: List<CompanyEntity>,
+    todayDate: String
+  ): List<TeamReportSummary> {
+    val todayEods = eods.filter { it.date == todayDate }
+    
+    return teams
+      .filter { it.eodFormType != "STANDARD" } // Only custom form teams
+      .map { team ->
+        val teamEmployees = employees.filter { it.teamId == team.teamId }
+        val teamEods = todayEods.filter { it.teamId == team.teamId }
+        val company = companies.firstOrNull { it.companyId == team.companyId }
+        
+        val customMetrics = when (team.eodFormType) {
+          "TELECALLING" -> computeTelecallingMetrics(teamEods)
+          "COUNSELLOR" -> computeCounsellorMetrics(teamEods)
+          "MARKETING" -> computeMarketingMetrics(teamEods)
+          "SIMPLE" -> computeSimpleMetrics(teamEods)
+          else -> null
+        }
+        
+        TeamReportSummary(
+          teamId = team.teamId,
+          teamName = team.name,
+          companyName = company?.name ?: "Unknown",
+          eodFormType = team.eodFormType,
+          totalMembers = teamEmployees.size,
+          todaySubmissions = teamEods.size,
+          customMetrics = customMetrics
+        )
+      }
+  }
+
+  private fun computeTelecallingMetrics(eods: List<DailyEodEntity>): CustomTeamMetrics {
+    var totalCalls = 0
+    var totalFollowUps = 0
+    var totalConversions = 0
+    
+    val submissions = eods.mapNotNull { eod ->
+      try {
+        eod.customFormData?.let { jsonData ->
+          val data = com.google.gson.Gson().fromJson(jsonData, com.example.data.TelecallingFormData::class.java)
+          totalCalls += data.callsMade
+          totalFollowUps += data.followUps
+          totalConversions += data.conversions
+          
+          CustomFormSubmission(
+            employeeName = eod.employeeName,
+            date = eod.date,
+            formData = "Calls: ${data.callsMade}, Follow-ups: ${data.followUps}, Conversions: ${data.conversions}",
+            submissionTime = eod.submissionTime
+          )
+        }
+      } catch (e: Exception) {
+        null
+      }
+    }
+    
+    val conversionRate = if (totalCalls > 0) (totalConversions.toDouble() / totalCalls * 100) else 0.0
+    
+    return CustomTeamMetrics(
+      totalCalls = totalCalls,
+      totalFollowUps = totalFollowUps,
+      totalConversions = totalConversions,
+      conversionRate = conversionRate,
+      submissionsList = submissions
+    )
+  }
+
+  private fun computeCounsellorMetrics(eods: List<DailyEodEntity>): CustomTeamMetrics {
+    var totalStudents = 0
+    val studentsByCountry = mutableMapOf<String, Int>()
+    val studentsByStatus = mutableMapOf<String, Int>()
+    
+    val submissions = eods.mapNotNull { eod ->
+      try {
+        eod.customFormData?.let { jsonData ->
+          val data = com.google.gson.Gson().fromJson(jsonData, com.example.data.CounsellorFormData::class.java)
+          totalStudents += data.students.size
+          
+          data.students.forEach { student ->
+            studentsByCountry[student.country] = (studentsByCountry[student.country] ?: 0) + 1
+            studentsByStatus[student.status] = (studentsByStatus[student.status] ?: 0) + 1
+          }
+          
+          CustomFormSubmission(
+            employeeName = eod.employeeName,
+            date = eod.date,
+            formData = "${data.students.size} students logged",
+            submissionTime = eod.submissionTime
+          )
+        }
+      } catch (e: Exception) {
+        null
+      }
+    }
+    
+    return CustomTeamMetrics(
+      totalStudents = totalStudents,
+      studentsByCountry = studentsByCountry,
+      studentsByStatus = studentsByStatus,
+      submissionsList = submissions
+    )
+  }
+
+  private fun computeMarketingMetrics(eods: List<DailyEodEntity>): CustomTeamMetrics {
+    var totalVisits = 0
+    val collegesVisited = mutableListOf<String>()
+    
+    val submissions = eods.mapNotNull { eod ->
+      try {
+        eod.customFormData?.let { jsonData ->
+          val data = com.google.gson.Gson().fromJson(jsonData, com.example.data.MarketingFormData::class.java)
+          totalVisits += data.visits.size
+          collegesVisited.addAll(data.visits.map { it.collegeName })
+          
+          CustomFormSubmission(
+            employeeName = eod.employeeName,
+            date = eod.date,
+            formData = "${data.visits.size} college visits",
+            submissionTime = eod.submissionTime
+          )
+        }
+      } catch (e: Exception) {
+        null
+      }
+    }
+    
+    return CustomTeamMetrics(
+      totalCollegeVisits = totalVisits,
+      collegesVisited = collegesVisited.distinct(),
+      submissionsList = submissions
+    )
+  }
+
+  private fun computeSimpleMetrics(eods: List<DailyEodEntity>): CustomTeamMetrics {
+    val submissions = eods.map { eod ->
+      CustomFormSubmission(
+        employeeName = eod.employeeName,
+        date = eod.date,
+        formData = "Description submitted",
+        submissionTime = eod.submissionTime
+      )
+    }
+    
+    return CustomTeamMetrics(
+      submissionsList = submissions
+    )
+  }
+
   fun computeMissingEodAlerts(
     employees: List<EmployeeEntity>,
     eods: List<DailyEodEntity>,
@@ -1120,6 +1442,18 @@ class WorkCoreRepository(
     )
   }
 
+  suspend fun getTeamDataByEmployeeId(employeeId: String, teamType: String): TeamMemberDataEntity? = withContext(Dispatchers.IO) {
+    teamMemberDataDao.getTeamDataByEmployeeId(employeeId, teamType)
+  }
+
+  suspend fun saveTeamMemberData(employeeId: String, teamType: String, data: TeamMemberDataEntity): Long = withContext(Dispatchers.IO) {
+    teamMemberDataDao.insertTeamMemberData(data.copy(employeeId = employeeId))
+  }
+
+  suspend fun deleteTeamDataByEmployeeId(employeeId: String, teamType: String) = withContext(Dispatchers.IO) {
+    teamMemberDataDao.deleteTeamDataByEmployeeId(employeeId, teamType)
+  }
+
   /**
    * Insert a new team directly (for admin team creation)
    */
@@ -1193,6 +1527,69 @@ class WorkCoreRepository(
       Result.failure(e)
     }
   }
+
+  /**
+   * ONE-TIME ADMIN FUNCTION: Upload all employee, team, and department data to Firestore
+   * Skips delete step since you manually cleared Firebase
+   */
+  suspend fun resetFirestoreWithLocalData(): Result<String> = withContext(Dispatchers.IO) {
+    val firebase = firebaseDataSource ?: return@withContext Result.failure(
+      IllegalStateException("Firebase not initialized")
+    )
+    
+    return@withContext try {
+      android.util.Log.i("WorkCoreRepository", "🔥 ADMIN: Starting Firestore upload...")
+      
+      // Step 1: Get all local data
+      val localEmployees = employeeDao.getAllEmployees().first()
+      val localTeams = teamDao.getAllTeams().first()
+      val localDepartments = departmentDao.getAllDepartments().first()
+      
+      android.util.Log.i("WorkCoreRepository", "📊 Found ${localEmployees.size} employees, ${localTeams.size} teams, ${localDepartments.size} departments")
+      
+      // Step 2: Upload departments
+      val deptResult = firebase.uploadAllDepartmentsToFirestore(localDepartments)
+      var deptCount = 0
+      deptResult.fold(
+        onSuccess = { count -> 
+          deptCount = count
+          android.util.Log.i("WorkCoreRepository", "✅ Uploaded $count departments")
+        },
+        onFailure = { error ->
+          return@withContext Result.failure(Exception("Failed to upload departments: ${error.message}"))
+        }
+      )
+      
+      // Step 3: Upload teams
+      val teamResult = firebase.uploadAllTeamsToFirestore(localTeams)
+      var teamCount = 0
+      teamResult.fold(
+        onSuccess = { count ->
+          teamCount = count
+          android.util.Log.i("WorkCoreRepository", "✅ Uploaded $count teams")
+        },
+        onFailure = { error ->
+          return@withContext Result.failure(Exception("Failed to upload teams: ${error.message}"))
+        }
+      )
+      
+      // Step 4: Upload employees
+      val empResult = firebase.uploadAllEmployeesToFirestore(localEmployees)
+      empResult.fold(
+        onSuccess = { empCount ->
+          val message = "✅ SUCCESS: Uploaded $deptCount departments, $teamCount teams, and $empCount employees to Firestore"
+          android.util.Log.i("WorkCoreRepository", message)
+          Result.success(message)
+        },
+        onFailure = { error ->
+          val errorMsg = "Failed to upload employees: ${error.message}"
+          android.util.Log.e("WorkCoreRepository", errorMsg)
+          Result.failure(Exception(errorMsg))
+        }
+      )
+    } catch (e: Exception) {
+      android.util.Log.e("WorkCoreRepository", "❌ Upload failed: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
 }
-
-
