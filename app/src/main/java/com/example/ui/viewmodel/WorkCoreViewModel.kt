@@ -886,6 +886,13 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     snackbarMessage.value = "Logged out successfully."
   }
 
+  fun sendPasswordReset(email: String, onResult: (Boolean, String) -> Unit) {
+    viewModelScope.launch {
+      repository.authRepository.sendPasswordReset(email)
+      onResult(true, "If an account exists for this email, password setup instructions have been sent.")
+    }
+  }
+
   // -------------------------------------------------------------
   // MANAGER EMPLOYEE ACCOUNT CREATION
   // -------------------------------------------------------------

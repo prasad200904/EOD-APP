@@ -42,11 +42,13 @@ import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -120,6 +122,9 @@ fun LoginScreen(
 
   var passwordVisible by remember { mutableStateOf(false) }
   var errorMessage by remember { mutableStateOf<String?>(null) }
+  var showResetPasswordDialog by remember { mutableStateOf(false) }
+  var resetEmail by remember { mutableStateOf("") }
+  var resetMessage by remember { mutableStateOf<String?>(null) }
 
   val departmentCards = remember {
     listOf(
@@ -565,6 +570,85 @@ fun LoginScreen(
             modifier = Modifier.align(Alignment.CenterHorizontally)
           )
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // "Forgot password / Set password" button
+        TextButton(
+          onClick = {
+            resetEmail = if (adminUsername.contains("@")) adminUsername else ""
+            resetMessage = null
+            showResetPasswordDialog = true
+          },
+          modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+          Text(
+            text = "Forgot password / Set password",
+            fontSize = 13.sp,
+            color = com.example.ui.theme.CoralPrimary,
+            fontWeight = FontWeight.Medium
+          )
+        }
+      }
+
+      if (showResetPasswordDialog) {
+        AlertDialog(
+          onDismissRequest = { showResetPasswordDialog = false },
+          title = {
+            Text(
+              text = "Reset / Set Password",
+              fontSize = 18.sp,
+              fontWeight = FontWeight.Bold,
+              color = com.example.ui.theme.DarkSlateDeep
+            )
+          },
+          text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+              Text(
+                text = "Enter your registered work email. We'll send you a secure link to set or reset your password.",
+                fontSize = 13.sp,
+                color = com.example.ui.theme.SubtleText
+              )
+              OutlinedTextField(
+                value = resetEmail,
+                onValueChange = { resetEmail = it },
+                label = { Text("Work Email") },
+                placeholder = { Text("e.g. name@company.com") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+              )
+              if (resetMessage != null) {
+                Text(
+                  text = resetMessage ?: "",
+                  fontSize = 12.sp,
+                  color = Color(0xFF1D6C2F),
+                  fontWeight = FontWeight.Medium
+                )
+              }
+            }
+          },
+          confirmButton = {
+            Button(
+              onClick = {
+                if (resetEmail.isNotBlank()) {
+                  viewModel.sendPasswordReset(resetEmail.trim()) { success, msg ->
+                    resetMessage = msg
+                  }
+                }
+              },
+              colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.CoralPrimary),
+              shape = RoundedCornerShape(10.dp)
+            ) {
+              Text("Send Link", color = Color.White)
+            }
+          },
+          dismissButton = {
+            TextButton(onClick = { showResetPasswordDialog = false }) {
+              Text("Close", color = com.example.ui.theme.SubtleText)
+            }
+          }
+        )
       }
 
       Spacer(modifier = Modifier.height(28.dp))
