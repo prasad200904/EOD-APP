@@ -2,60 +2,184 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── Helper functions ────────────────────────────────────────────
     
-    // ============================================
-    // OPEN ACCESS FOR DEVELOPMENT
-    // (Tighten these rules for production!)
-    // ============================================
-    
-    // EOD SUBMISSIONS - Allow all reads/writes
+    // Check if request comes from a signed-in user
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Check if the signed-in user is the ADMIN account (strictly via token claims)
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'ADMIN'
+      );
+    }
+
+    // Check if user is an employee (token has role or employeeId claim)
+    function isEmployee() {
+      return isSignedIn() && (
+        request.auth.token.role != null ||
+        request.auth.token.employeeId != null
+      );
+    }
+
+    // Get the employeeId strictly from token claim (fall back to auth.uid)
+    function myEmployeeId() {
+      return request.auth.token.employeeId != null
+        ? request.auth.token.employeeId
+        : request.auth.uid;
+    }
+
+    // Get the team strictly from token claim
+    function myTeam() {
+      return request.auth.token.teamId != null
+        ? request.auth.token.teamId
+        : "";
+    }
+
+    // Get the company strictly from token claim
+    function myCompany() {
+      return request.auth.token.companyId != null
+        ? request.auth.token.companyId
+        : "";
+    }
+
+    // ─── EOD Submissions ─────────────────────────────────────────────
+    // Document ID format: {employeeId}_{date}  e.g. SS001_2026-10-22
     match /eod_submissions/{submissionId} {
-      allow read, write: if true;
+
+      // Admin can read ALL EODs
+      // Employee can only read their own team's EODs
+      allow read: if isAdmin() ||
+        (isEmployee() && (
+          resource.data.employeeId == myEmployeeId() ||
+          resource.data.employeeId == request.auth.uid ||
+          resource.data.teamId == myTeam()
+        ));
+
+      // Employee can only write their OWN EOD
+      // Admin can write any EOD
+      allow create: if isAdmin() ||
+        (isEmployee() && (
+          request.resource.data.employeeId == myEmployeeId() ||
+          request.resource.data.employeeId == request.auth.uid
+        ));
+
+      // Update allowed only if employeeId and teamId remain immutable
+      allow update: if isAdmin() ||
+        (isEmployee() && (
+          (resource.data.employeeId == myEmployeeId() || resource.data.employeeId == request.auth.uid) &&
+          request.resource.data.employeeId == resource.data.employeeId &&
+          request.resource.data.teamId == resource.data.teamId
+        ));
+
+      // Only admin can delete EODs
+      allow delete: if isAdmin();
     }
-    
-    // EMPLOYEES COLLECTION - Allow all reads/writes
+
+    // ─── Employees ───────────────────────────────────────────────────
     match /employees/{employeeId} {
-      allow read, write: if true;
+
+      // Admin can read all employees
+      // Employee can read their own profile + teammates (same team)
+      allow read: if isAdmin() ||
+        (isEmployee() && (
+          employeeId == myEmployeeId() ||
+          employeeId == request.auth.uid ||
+          resource.data.team == myTeam() ||
+          resource.data.teamId == myTeam()
+        ));
+
+      // Only admin can create / update / delete employees
+      allow write: if isAdmin();
     }
-    
-    // DEPARTMENTS COLLECTION - Allow all reads/writes
+
+    // ─── Departments ─────────────────────────────────────────────────
     match /departments/{departmentId} {
-      allow read, write: if true;
+      // Everyone can read departments (needed for login screen)
+      allow read: if isSignedIn();
+
+      // Only admin can modify departments
+      allow write: if isAdmin();
     }
-    
-    // TEAMS COLLECTION - Allow all reads/writes
+
+    // ─── Teams ───────────────────────────────────────────────────────
     match /teams/{teamId} {
-      allow read, write: if true;
+      // Everyone signed in can read teams (needed for login + EOD form)
+      allow read: if isSignedIn();
+
+      // Only admin can modify teams
+      allow write: if isAdmin();
     }
-    
-    // USERS COLLECTION - Allow all reads/writes
+
+    // ─── Users (Firebase Auth profiles) ─────────────────────────────
     match /users/{userId} {
-      allow read, write: if true;
+      // User can read only their own profile; Admin can read all
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+
+      // Write strictly disallowed for clients (server-only via Admin SDK)
+      allow write: if false;
     }
-    
-    // NOTIFICATIONS COLLECTION - Allow all reads/writes
+
+    // ─── Companies ───────────────────────────────────────────────────
+    match /companies/{companyId} {
+      // Everyone signed in can read company info
+      allow read: if isSignedIn();
+
+      // Only admin can modify companies
+      allow write: if isAdmin();
+    }
+
+    // ─── Notifications ───────────────────────────────────────────────
     match /notifications/{notificationId} {
-      allow read, write: if true;
+      // User can read notifications meant for them or everyone
+      allow read: if isSignedIn() && (
+        resource.data.targetEmployeeId == request.auth.uid ||
+        resource.data.targetRole == 'ALL' ||
+        isAdmin()
+      );
+
+      // Only admin can create/delete notifications
+      allow write: if isAdmin();
     }
-    
-    // AUDIT LOGS COLLECTION - Allow all reads/writes
+
+    // ─── Audit Logs ──────────────────────────────────────────────────
     match /audit_logs/{logId} {
-      allow read, write: if true;
+      // Only admin can read audit logs
+      allow read: if isAdmin();
+
+      // Signed-in employee can create audit logs where employeeId matches their token/auth
+      allow create: if isEmployee() && (
+        request.resource.data.employeeId == myEmployeeId() ||
+        request.resource.data.employeeId == request.auth.uid
+      );
+
+      // Nobody can update or delete audit logs (immutable)
+      allow update, delete: if false;
     }
-    
-    // APP CONFIGURATION - Allow all reads/writes
+
+    // ─── App Config (version info for updates) ───────────────────────
     match /app_config/{docId} {
-      allow read, write: if true;
+      // Everyone can read app config (needed for update checker)
+      allow read: if true;
+
+      // Only admin can update app config
+      allow write: if isAdmin();
     }
-    
-    // Legacy EOD Reports - Allow all reads/writes
+
+    // ─── Legacy EOD Reports ──────────────────────────────────────────
     match /eodReports/{reportId} {
-      allow read, write: if true;
+      allow read: if isAdmin() ||
+        (isEmployee() && resource.data.employeeId == request.auth.uid);
+      allow write: if isEmployee();
     }
-    
-    // Allow all other collections for development
+
+    // ─── Deny everything else ────────────────────────────────────────
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
