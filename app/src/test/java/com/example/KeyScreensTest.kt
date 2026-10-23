@@ -34,13 +34,15 @@ class KeyScreensTest {
     private val TODAY = "2026-10-22"
 
     @Before
-    fun setup() = runBlocking {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        repository = WorkCoreRepository(db)
-        repository.initializeSeedDataIfNeeded()
+    fun setup() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+            repository = WorkCoreRepository(db)
+            repository.initializeSeedDataIfNeeded()
+        }
     }
 
     @After

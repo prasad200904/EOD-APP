@@ -36,13 +36,15 @@ class SaveDataFlowTest {
     private val TEST_EMPLOYEE_NAME = "Test Employee"
 
     @Before
-    fun setup() = runBlocking {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        repository = WorkCoreRepository(db)
-        repository.initializeSeedDataIfNeeded()
+    fun setup() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+            repository = WorkCoreRepository(db)
+            repository.initializeSeedDataIfNeeded()
+        }
     }
 
     @After

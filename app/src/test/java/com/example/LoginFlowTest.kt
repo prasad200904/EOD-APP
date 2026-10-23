@@ -31,13 +31,15 @@ class LoginFlowTest {
     private lateinit var repository: WorkCoreRepository
 
     @Before
-    fun setup() = runBlocking {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
-            .allowMainThreadQueries()
-            .build()
-        repository = WorkCoreRepository(db)
-        repository.initializeSeedDataIfNeeded()
+    fun setup() {
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+            repository = WorkCoreRepository(db)
+            repository.initializeSeedDataIfNeeded()
+        }
     }
 
     @After
