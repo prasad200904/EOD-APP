@@ -435,7 +435,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
         return@launch
       }
       
-      android.util.Log.d("WorkCoreAuth", "Found team: ${team.name}, password check: ${team.teamPassword}")
+      android.util.Log.d("WorkCoreAuth", "Found team: ${team.name}, verifying credentials")
       
       // Check if password matches
       if (team.teamPassword != password) {
@@ -1113,7 +1113,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     fullName: String,
     email: String,
     phone: String,
-    password: String,
+    password: String = "",
     onResult: (Boolean, String?) -> Unit
   ) {
     viewModelScope.launch {
@@ -1128,7 +1128,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
           return@launch
         }
         
-        // Create admin employee entity
+        // Create admin employee entity without password
         val adminEmployee = EmployeeEntity(
           employeeId = "ADMIN",
           name = fullName,
@@ -1143,7 +1143,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
           joiningDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
             .format(java.util.Date()),
           role = Role.ADMIN.name,
-          password = password
+          password = ""
         )
         
         // Insert into database
