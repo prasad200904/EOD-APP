@@ -91,7 +91,7 @@ data class EmployeeEntity(
   val joiningDate: String,
   val role: String = Role.EMPLOYEE.name,
   val isActive: Boolean = true,
-  val password: String = "password123",
+  val password: String = "",
   val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -186,7 +186,7 @@ data class TeamEntity(
   val createdDate: String = "2024-01-01",
   val status: String = "Active", // "Active", "Inactive"
   val description: String = "",
-  val teamPassword: String = "password123" // Team-level login password (unique per team)
+  val teamPassword: String = "" // Team-level login password (deprecated, password-free login)
 )
 
 @Entity(

@@ -5,6 +5,7 @@ import android.util.Log
 import com.example.data.DailyEodEntity
 import com.example.data.DepartmentEntity
 import com.example.data.EmployeeEntity
+import com.example.data.CompanyEntity
 import com.example.data.Role
 import com.example.data.SyncStatus
 import com.example.data.TeamEntity
@@ -117,6 +118,10 @@ class FirebaseDataSource(private val context: Context) {
         "employeeName" to eod.employeeName,
         "departmentId" to eod.departmentId,
         "departmentCode" to eod.departmentCode,
+        "teamId" to (eod.teamId ?: ""), // NEW
+        "companyId" to (eod.companyId ?: ""), // NEW
+        "eodFormType" to (eod.eodFormType ?: "STANDARD"), // NEW
+        "customFormData" to (eod.customFormData ?: ""), // NEW
         "date" to eod.date,
         "project" to eod.project,
         "todayWork" to eod.todayWork,
@@ -153,6 +158,10 @@ class FirebaseDataSource(private val context: Context) {
           employeeName = doc.getString("employeeName") ?: "",
           departmentId = doc.getString("departmentId") ?: "DEPT_ML",
           departmentCode = doc.getString("departmentCode") ?: "ML",
+          teamId = doc.getString("teamId") ?: "", // NEW
+          companyId = doc.getString("companyId") ?: "", // NEW
+          eodFormType = doc.getString("eodFormType") ?: "STANDARD", // NEW
+          customFormData = doc.getString("customFormData") ?: "", // NEW
           date = date,
           project = doc.getString("project") ?: "",
           todayWork = doc.getString("todayWork") ?: "",
@@ -191,6 +200,10 @@ class FirebaseDataSource(private val context: Context) {
           employeeName = doc.getString("employeeName") ?: "",
           departmentId = doc.getString("departmentId") ?: "DEPT_ML",
           departmentCode = doc.getString("departmentCode") ?: "ML",
+          teamId = doc.getString("teamId") ?: "", // NEW
+          companyId = doc.getString("companyId") ?: "", // NEW
+          eodFormType = doc.getString("eodFormType") ?: "STANDARD", // NEW
+          customFormData = doc.getString("customFormData") ?: "", // NEW
           date = date,
           project = doc.getString("project") ?: "",
           todayWork = doc.getString("todayWork") ?: "",
@@ -225,6 +238,8 @@ class FirebaseDataSource(private val context: Context) {
         "department" to emp.department,
         "departmentId" to emp.departmentId,
         "team" to emp.team,
+        "teamId" to (emp.teamId ?: ""), // NEW
+        "companyId" to (emp.companyId ?: ""), // NEW
         "designation" to emp.designation,
         "defaultProject" to emp.defaultProject,
         "joiningDate" to emp.joiningDate,
@@ -265,6 +280,8 @@ class FirebaseDataSource(private val context: Context) {
           department = doc.getString("department") ?: "ML",
           departmentId = doc.getString("departmentId") ?: "DEPT_ML",
           team = doc.getString("team") ?: "Core Team",
+          teamId = doc.getString("teamId") ?: "", // NEW
+          companyId = doc.getString("companyId") ?: "", // NEW
           designation = doc.getString("designation") ?: "Engineer",
           defaultProject = doc.getString("defaultProject") ?: "Core Engineering",
           joiningDate = doc.getString("joiningDate") ?: "2024-01-01",
@@ -326,6 +343,8 @@ class FirebaseDataSource(private val context: Context) {
         "teamId" to team.teamId,
         "name" to team.name,
         "department" to team.department,
+        "companyId" to (team.companyId ?: ""), // NEW
+        "eodFormType" to (team.eodFormType ?: "STANDARD"), // NEW
         "projects" to team.projects,
         "status" to team.status,
         "description" to team.description,
@@ -349,6 +368,8 @@ class FirebaseDataSource(private val context: Context) {
           teamId = teamId,
           name = doc.getString("name") ?: "",
           department = doc.getString("department") ?: "",
+          companyId = doc.getString("companyId") ?: "", // NEW
+          eodFormType = doc.getString("eodFormType") ?: "STANDARD", // NEW
           managerId = "",
           managerName = "",
           projects = doc.getString("projects") ?: "",
@@ -491,7 +512,6 @@ class FirebaseDataSource(private val context: Context) {
 
       query = query.whereGreaterThanOrEqualTo("date", startDate)
         .whereLessThanOrEqualTo("date", endDate)
-        .orderBy("date", com.google.firebase.firestore.Query.Direction.DESCENDING)
         .limit(limit)
 
       if (startAfterDoc != null) {
@@ -509,7 +529,6 @@ class FirebaseDataSource(private val context: Context) {
         }
         fallbackQuery = fallbackQuery.whereGreaterThanOrEqualTo("date", startDate)
           .whereLessThanOrEqualTo("date", endDate)
-          .orderBy("date", com.google.firebase.firestore.Query.Direction.DESCENDING)
           .limit(limit)
 
         if (startAfterDoc != null) {
@@ -555,21 +574,254 @@ class FirebaseDataSource(private val context: Context) {
         )
       }
 
+      // Sort in memory by date descending to avoid composite index requirement
+      val sortedList = list.sortedByDescending { it.date }
+
       val lastDoc = docs.lastOrNull()
       val hasMore = list.size.toLong() >= limit
 
-      Result.success(EodHistoryQueryResult(list, lastDoc, hasMore))
+      Result.success(EodHistoryQueryResult(sortedList, lastDoc, hasMore))
     } catch (e: Exception) {
       Log.e(TAG, "fetchEodHistoryFromFirestore error: ${e.message}", e)
       Result.failure(e)
     }
   }
+
+  // -------------------------------------------------------------
+  // COMPANY SYNC METHODS
+  // -------------------------------------------------------------
+
+  suspend fun uploadCompany(company: CompanyEntity): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      val data = hashMapOf(
+        "companyId" to company.companyId,
+        "name" to company.name,
+        "type" to company.type,
+        "parentCompanyId" to (company.parentCompanyId ?: ""),
+        "updatedAt" to company.updatedAt
+      )
+      db.collection("companies").document(company.companyId).set(data).await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.e(TAG, "uploadCompany error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
+
+  suspend fun fetchCompanies(): Result<List<CompanyEntity>> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      val snapshot = db.collection("companies").get().await()
+      val list = snapshot.documents.mapNotNull { doc ->
+        val companyId = doc.getString("companyId") ?: return@mapNotNull null
+        CompanyEntity(
+          id = 0,
+          companyId = companyId,
+          name = doc.getString("name") ?: "",
+          type = doc.getString("type") ?: "PRIMARY",
+          parentCompanyId = doc.getString("parentCompanyId")?.takeIf { it.isNotBlank() },
+          updatedAt = doc.getLong("updatedAt") ?: System.currentTimeMillis()
+        )
+      }
+      Result.success(list)
+    } catch (e: Exception) {
+      Log.e(TAG, "fetchCompanies error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
+
+  suspend fun deleteCompany(companyId: String): Result<Unit> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      db.collection("companies").document(companyId).delete().await()
+      Result.success(Unit)
+    } catch (e: Exception) {
+      Log.e(TAG, "deleteCompany error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
+
+  /**
+   * ONE-TIME ADMIN FUNCTION: Clear all employees from Firestore
+   * This deletes all employee documents in batches
+   */
+  suspend fun clearAllEmployeesFromFirestore(): Result<Int> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      Log.d(TAG, "🗑️ Starting to delete all employees from Firestore...")
+      var deletedCount = 0
+      
+      // Fetch all employee documents
+      val snapshot = db.collection("employees").get().await()
+      
+      // Delete in batches (Firestore batch limit is 500)
+      val batch = db.batch()
+      var batchCount = 0
+      
+      for (doc in snapshot.documents) {
+        batch.delete(doc.reference)
+        batchCount++
+        deletedCount++
+        
+        // Commit batch every 500 operations
+        if (batchCount >= 500) {
+          batch.commit().await()
+          Log.d(TAG, "Batch committed: $deletedCount deleted so far...")
+          batchCount = 0
+        }
+      }
+      
+      // Commit remaining batch
+      if (batchCount > 0) {
+        batch.commit().await()
+      }
+      
+      Log.d(TAG, "✅ Successfully deleted $deletedCount employees from Firestore")
+      Result.success(deletedCount)
+    } catch (e: Exception) {
+      Log.e(TAG, "❌ clearAllEmployeesFromFirestore error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
+
+  /**
+   * ONE-TIME ADMIN FUNCTION: Upload all local employees to Firestore
+   * This uploads all employee entities in batches
+   */
+  suspend fun uploadAllEmployeesToFirestore(employees: List<EmployeeEntity>): Result<Int> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      Log.d(TAG, "📤 Starting to upload ${employees.size} employees to Firestore...")
+      var uploadedCount = 0
+      
+      // Upload in batches (Firestore batch limit is 500)
+      val batches = employees.chunked(500)
+      
+      for ((batchIndex, batchEmployees) in batches.withIndex()) {
+        val batch = db.batch()
+        
+        for (emp in batchEmployees) {
+          val docRef = db.collection("employees").document(emp.employeeId)
+          val empMap = hashMapOf(
+            "employeeId" to emp.employeeId,
+            "name" to emp.name,
+            "email" to emp.email,
+            "phone" to emp.phone,
+            "companyId" to emp.companyId,
+            "department" to emp.department,
+            "departmentId" to emp.departmentId,
+            "team" to emp.team,
+            "teamId" to emp.teamId,
+            "designation" to emp.designation,
+            "role" to emp.role,
+            "isActive" to emp.isActive,
+            "joiningDate" to emp.joiningDate,
+            "createdAt" to emp.createdAt
+          )
+          batch.set(docRef, empMap)
+          uploadedCount++
+        }
+        
+        batch.commit().await()
+        Log.d(TAG, "Batch ${batchIndex + 1}/${batches.size} committed: $uploadedCount uploaded...")
+      }
+      
+      Log.d(TAG, "✅ Successfully uploaded $uploadedCount employees to Firestore")
+      Result.success(uploadedCount)
+    } catch (e: Exception) {
+      Log.e(TAG, "❌ uploadAllEmployeesToFirestore error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
+
+  /**
+   * Upload all teams to Firestore in batches
+   */
+  suspend fun uploadAllTeamsToFirestore(teams: List<TeamEntity>): Result<Int> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      Log.d(TAG, "📤 Starting to upload ${teams.size} teams to Firestore...")
+      var uploadedCount = 0
+      
+      val batches = teams.chunked(500)
+      for ((batchIndex, batchTeams) in batches.withIndex()) {
+        val batch = db.batch()
+        
+        for (team in batchTeams) {
+          val docRef = db.collection("teams").document(team.teamId)
+          val teamMap = hashMapOf(
+            "teamId" to team.teamId,
+            "name" to team.name,
+            "companyId" to team.companyId,
+            "department" to team.department,
+            "eodFormType" to team.eodFormType,
+            "managerId" to team.managerId,
+            "managerName" to team.managerName,
+            "projects" to team.projects,
+            "createdDate" to team.createdDate,
+            "status" to team.status,
+            "description" to team.description
+          )
+          batch.set(docRef, teamMap)
+          uploadedCount++
+        }
+        
+        batch.commit().await()
+        Log.d(TAG, "Batch ${batchIndex + 1}/${batches.size} committed: $uploadedCount teams uploaded...")
+      }
+      
+      Log.d(TAG, "✅ Successfully uploaded $uploadedCount teams to Firestore")
+      Result.success(uploadedCount)
+    } catch (e: Exception) {
+      Log.e(TAG, "❌ uploadAllTeamsToFirestore error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
+
+  /**
+   * Upload all departments to Firestore in batches
+   */
+  suspend fun uploadAllDepartmentsToFirestore(departments: List<DepartmentEntity>): Result<Int> {
+    val db = firestore ?: return Result.failure(IllegalStateException("Firebase is not initialized"))
+    return try {
+      Log.d(TAG, "📤 Starting to upload ${departments.size} departments to Firestore...")
+      var uploadedCount = 0
+      
+      val batches = departments.chunked(500)
+      for ((batchIndex, batchDepts) in batches.withIndex()) {
+        val batch = db.batch()
+        
+        for (dept in batchDepts) {
+          val docRef = db.collection("departments").document(dept.deptId)
+          val deptMap = hashMapOf(
+            "deptId" to dept.deptId,
+            "name" to dept.name,
+            "code" to dept.code,
+            "prefix" to dept.prefix,
+            "managerIds" to dept.managerIds,
+            "description" to dept.description
+          )
+          batch.set(docRef, deptMap)
+          uploadedCount++
+        }
+        
+        batch.commit().await()
+        Log.d(TAG, "Batch ${batchIndex + 1}/${batches.size} committed: $uploadedCount departments uploaded...")
+      }
+      
+      Log.d(TAG, "✅ Successfully uploaded $uploadedCount departments to Firestore")
+      Result.success(uploadedCount)
+    } catch (e: Exception) {
+      Log.e(TAG, "❌ uploadAllDepartmentsToFirestore error: ${e.message}", e)
+      Result.failure(e)
+    }
+  }
 }
 
+// Data class for EOD history query result with pagination support
 data class EodHistoryQueryResult(
-  val items: List<DailyEodEntity>,
-  val lastDocumentSnapshot: com.google.firebase.firestore.DocumentSnapshot? = null,
-  val hasMore: Boolean = false
+  val eods: List<DailyEodEntity>,
+  val lastDocument: com.google.firebase.firestore.DocumentSnapshot?,
+  val hasMore: Boolean
 )
-
-
