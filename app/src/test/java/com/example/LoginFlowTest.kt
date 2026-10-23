@@ -48,8 +48,10 @@ class LoginFlowTest {
     @Test
     fun `admin login with correct password succeeds`() = runBlocking {
         val result = repository.authenticate(
+            role = com.example.data.Role.ADMIN,
+            teamName = null,
             identifier = "admin",
-            password = "admin123"
+            passwordInput = "admin123"
         )
         assertTrue("Admin login should succeed", result.isSuccess)
         val employee = result.getOrNull()
@@ -61,8 +63,10 @@ class LoginFlowTest {
     @Test
     fun `admin login with wrong password fails`() = runBlocking {
         val result = repository.authenticate(
+            role = com.example.data.Role.ADMIN,
+            teamName = null,
             identifier = "admin",
-            password = "wrongpassword"
+            passwordInput = "wrongpassword"
         )
         assertTrue("Wrong password should fail", result.isFailure)
     }
