@@ -166,7 +166,7 @@ object SeedData {
       projects = "Machine Learning Projects",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "ML and Data Science team",
+      description = "ML and Data Science team"
     ),
     TeamEntity(
       teamId = "TEAM_DB",
@@ -179,7 +179,7 @@ object SeedData {
       projects = "Database Projects",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "Database team",
+      description = "Database team"
     ),
     TeamEntity(
       teamId = "TEAM_GT",
@@ -192,7 +192,7 @@ object SeedData {
       projects = "General Development",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "General development team",
+      description = "General development team"
     ),
     TeamEntity(
       teamId = "TEAM_WRITING",
@@ -205,7 +205,7 @@ object SeedData {
       projects = "Content and Research",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "Writing and research team",
+      description = "Writing and research team"
     ),
     TeamEntity(
       teamId = "TEAM_CYBER",
@@ -218,7 +218,7 @@ object SeedData {
       projects = "Security Projects",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "Cybersecurity team",
+      description = "Cybersecurity team"
     ),
     TeamEntity(
       teamId = "TEAM_TEGA",
@@ -231,7 +231,7 @@ object SeedData {
       projects = "TEGA Projects",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "TEGA team",
+      description = "TEGA team"
     ),
     
     // ACADEMIC OVERSEAS TEAMS
@@ -246,7 +246,7 @@ object SeedData {
       projects = "Student Acquisition",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "AO Marketing team",
+      description = "AO Marketing team"
     ),
     TeamEntity(
       teamId = "TEAM_AO_CNS",
@@ -259,7 +259,7 @@ object SeedData {
       projects = "Student Counselling",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "AO Counsellor team",
+      description = "AO Counsellor team"
     ),
     TeamEntity(
       teamId = "TEAM_AO_TLC",
@@ -272,7 +272,7 @@ object SeedData {
       projects = "Student Outreach",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "AO Tele Caller team",
+      description = "AO Tele Caller team"
     ),
     TeamEntity(
       teamId = "TEAM_AO_MGR",
@@ -285,7 +285,7 @@ object SeedData {
       projects = "Management",
       createdDate = "2024-01-01",
       status = "Active",
-      description = "AO Management team",
+      description = "AO Management team"
     )
   )
 
@@ -298,6 +298,22 @@ object SeedData {
       employeeId = "ADMIN",
       name = "System Administrator",
       email = "admin@workcore.com",
+      phone = "+1 (555) 000-0001",
+      companyId = "COMP_SS",
+      department = "Cyber Security",
+      departmentId = "DEPT_CYBER",
+      team = "Cyber Security",
+      teamId = "TEAM_CYBER",
+      managerId = "BOARD",
+      designation = "Managing Director / Admin",
+      defaultProject = "Executive Governance",
+      joiningDate = "2023-01-01",
+      role = Role.ADMIN.name,
+    ),
+    EmployeeEntity(
+      employeeId = "ADMIN_PRASAD",
+      name = "Durga Prasad",
+      email = "vundraladurgaprasad@gmail.com",
       phone = "+1 (555) 000-0001",
       companyId = "COMP_SS",
       department = "Cyber Security",

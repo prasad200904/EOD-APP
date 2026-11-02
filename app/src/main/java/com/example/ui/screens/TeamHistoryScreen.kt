@@ -65,12 +65,13 @@ import com.example.data.DepartmentEntity
 import com.example.data.EmployeeEntity
 import com.example.data.TeamMemberBehaviorItem
 import com.example.data.firebase.FirebaseDataSource
-import com.example.ui.theme.EodDarkBackground
-import com.example.ui.theme.EodDarkCardBorder
-import com.example.ui.theme.EodDarkSurface
-import com.example.ui.theme.EodTextMuted
-import com.example.ui.theme.EodTextPrimary
-import com.example.ui.theme.EodTextSecondary
+import com.example.ui.theme.WarmCream
+import com.example.ui.theme.WarmCardBorder
+import com.example.ui.theme.SubtleText
+import com.example.ui.theme.DarkSlateDeep
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.MintGreen
+import com.example.ui.theme.SelectedBorder
 import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -163,13 +164,16 @@ fun TeamHistoryScreen(
   var dateFilterType by remember { mutableStateOf("This month") }
   val filterOptions = listOf("This month", "Previous month", "Custom date range")
 
-  // Team filter state
+  // Team filter state — selecting team narrows employee list
   var selectedTeamFilter by remember { mutableStateOf("All Teams") }
   val teamFilterOptions = listOf(
-    "All Teams", "Marketing", "Counsellor", "Tele Caller", 
-    "Cyber Security", "ML Team", "DB Team", "General Team", 
-    "Writing Team", "TEGA", "Manager"
+    "All Teams", "General Team", "ML Team", "DB Team",
+    "Cyber Security", "Writing Team", "TEGA",
+    "Marketing", "Counsellor", "Tele Caller", "Manager"
   )
+
+  // Employee filter — derived from team selection, not a free-standing chip strip
+  var selectedEmployeeIdFilter by remember { mutableStateOf("All") }
 
   // Custom date range state
   val sdfYmd = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
@@ -201,8 +205,7 @@ fun TeamHistoryScreen(
     }
   }
 
-  // Requirement 5: Admin/manager filter by employee ID ("All" or specific ID). Normal employee locked.
-  var selectedEmployeeIdFilter by remember { mutableStateOf("All") }
+  // Requirement 5: Admin/manager filter by employee ID — now driven by team selection above
 
   // Firestore state
   var historyEodList by remember { mutableStateOf<List<DailyEodEntity>>(emptyList()) }
@@ -275,26 +278,33 @@ fun TeamHistoryScreen(
   }
 
   // Combined displayed EOD list (Firestore results fallback to local eods if empty)
-  val displayedRecords = remember(historyEodList, eods, dateFilterType, customStartDate, customEndDate, selectedEmployeeIdFilter, selectedTeamFilter, teamMembers) {
+  val displayedRecords = remember(historyEodList, eods, dateFilterType, customStartDate, customEndDate, selectedEmployeeIdFilter, selectedTeamFilter, teamMembers, currentManager) {
     val rawList = if (historyEodList.isNotEmpty()) historyEodList else eods
     val (sDate, eDate) = calculateDateRangeStrings(dateFilterType, customStartDate, customEndDate)
     val sOnly = sDate.take(10)
     val eOnly = eDate.take(10)
 
+    // For team logins (non-admin), scope EODs to their team members only
+    val teamMemberIds = teamMembers.map { it.employee.employeeId }.toSet()
+
     rawList.filter { eod ->
       val dateOnly = eod.date.take(10)
       val dateMatches = dateOnly >= sOnly && dateOnly <= eOnly
-      val empMatches = selectedEmployeeIdFilter == "All" || eod.employeeId == selectedEmployeeIdFilter
-      
-      // Team filter logic: find employee by ID and check their team
-      val teamMatches = if (selectedTeamFilter == "All Teams") {
-        true
-      } else {
+
+      // Non-admin: only show EODs from their own team
+      val teamScopeMatches = if (currentManager != null) true else eod.employeeId in teamMemberIds
+
+      // Admin only: employee + team chip filters
+      val empMatches = if (currentManager != null) {
+        selectedEmployeeIdFilter == "All" || eod.employeeId == selectedEmployeeIdFilter
+      } else true
+
+      val teamMatches = if (currentManager != null && selectedTeamFilter != "All Teams") {
         val employee = teamMembers.firstOrNull { it.employee.employeeId == eod.employeeId }
         employee?.employee?.team?.equals(selectedTeamFilter, ignoreCase = true) ?: false
-      }
-      
-      dateMatches && empMatches && teamMatches
+      } else true
+
+      dateMatches && teamScopeMatches && empMatches && teamMatches
     }.sortedByDescending { it.date }.map { eod ->
       var dayNum = "01"
       var dayName = "Day"
@@ -320,7 +330,7 @@ fun TeamHistoryScreen(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(WarmCream)
   ) {
     LazyColumn(
       modifier = Modifier
@@ -341,12 +351,12 @@ fun TeamHistoryScreen(
                 text = customTitle ?: "GT Team History",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.Black
               )
               Text(
                 text = "${sortedMembers.size} members",
                 fontSize = 12.sp,
-                color = Color(0xFF9CA3AF)
+                color = Color.Black
               )
             }
 
@@ -357,7 +367,7 @@ fun TeamHistoryScreen(
               Icon(
                 imageVector = Icons.Default.ExitToApp,
                 contentDescription = "Exit",
-                tint = Color(0xFF9CA3AF),
+                tint = Color.Black,
                 modifier = Modifier.size(20.dp)
               )
             }
@@ -372,7 +382,7 @@ fun TeamHistoryScreen(
               text = "EOD History",
               fontSize = 24.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White,
+              color = Color.Black,
               letterSpacing = (-0.5).sp
             )
 
@@ -407,8 +417,8 @@ fun TeamHistoryScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
           ) {
-            Icon(Icons.Default.FilterList, contentDescription = null, tint = Color(0xFF60A5FA), modifier = Modifier.size(16.dp))
-            Text("Date Range Filter", fontSize = 13.sp, color = Color(0xFF9CA3AF), fontWeight = FontWeight.SemiBold)
+            Icon(Icons.Default.FilterList, contentDescription = null, tint = CoralPrimary, modifier = Modifier.size(16.dp))
+            Text("Date Range Filter", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.SemiBold)
           }
 
           Row(
@@ -422,10 +432,10 @@ fun TeamHistoryScreen(
               Box(
                 modifier = Modifier
                   .clip(RoundedCornerShape(20.dp))
-                  .background(if (isSelected) Color.White else Color(0xFF191A22))
+                  .background(if (isSelected) MintGreen else Color.White)
                   .border(
                     width = 1.dp,
-                    color = if (isSelected) Color.Transparent else Color(0xFF2B2D3A),
+                    color = if (isSelected) CoralPrimary else Color(0xFFE8D5C4),
                     shape = RoundedCornerShape(20.dp)
                   )
                   .clickable { dateFilterType = opt }
@@ -437,7 +447,7 @@ fun TeamHistoryScreen(
                   text = opt,
                   fontSize = 13.sp,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isSelected) Color(0xFF0F0F12) else Color(0xFF9CA3AF)
+                  color = Color.Black
                 )
               }
             }
@@ -450,8 +460,8 @@ fun TeamHistoryScreen(
         item {
           Surface(
             shape = RoundedCornerShape(14.dp),
-            color = Color(0xFF191A22),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2B2D3A)),
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8D5C4)),
             modifier = Modifier.fillMaxWidth()
           ) {
             Column(
@@ -462,7 +472,7 @@ fun TeamHistoryScreen(
                 text = "Select Custom Start & End Date (00:00:00 to 23:59:59)",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF60A5FA)
+                color = CoralPrimary
               )
 
               Row(
@@ -474,7 +484,7 @@ fun TeamHistoryScreen(
                 OutlinedTextField(
                   value = customStartDate,
                   onValueChange = { customStartDate = it },
-                  label = { Text("Start Date", color = Color(0xFF9CA3AF), fontSize = 11.sp) },
+                  label = { Text("Start Date", color = Color.Black, fontSize = 11.sp) },
                   singleLine = true,
                   trailingIcon = {
                     IconButton(onClick = {
@@ -490,15 +500,15 @@ fun TeamHistoryScreen(
                       )
                       dialog.show()
                     }) {
-                      Icon(Icons.Default.DateRange, contentDescription = "Pick Start Date", tint = Color.White)
+                      Icon(Icons.Default.DateRange, contentDescription = "Pick Start Date", tint = CoralPrimary)
                     }
                   },
                   modifier = Modifier.weight(1f),
                   colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color(0xFF2B2D3A),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    focusedBorderColor = CoralPrimary,
+                    unfocusedBorderColor = Color(0xFFE8D5C4),
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                   )
                 )
 
@@ -506,7 +516,7 @@ fun TeamHistoryScreen(
                 OutlinedTextField(
                   value = customEndDate,
                   onValueChange = { customEndDate = it },
-                  label = { Text("End Date", color = Color(0xFF9CA3AF), fontSize = 11.sp) },
+                  label = { Text("End Date", color = Color.Black, fontSize = 11.sp) },
                   singleLine = true,
                   trailingIcon = {
                     IconButton(onClick = {
@@ -522,15 +532,15 @@ fun TeamHistoryScreen(
                       )
                       dialog.show()
                     }) {
-                      Icon(Icons.Default.DateRange, contentDescription = "Pick End Date", tint = Color.White)
+                      Icon(Icons.Default.DateRange, contentDescription = "Pick End Date", tint = CoralPrimary)
                     }
                   },
                   modifier = Modifier.weight(1f),
                   colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color(0xFF2B2D3A),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
+                    focusedBorderColor = CoralPrimary,
+                    unfocusedBorderColor = Color(0xFFE8D5C4),
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                   )
                 )
               }
@@ -560,64 +570,18 @@ fun TeamHistoryScreen(
         }
       }
 
-      // Requirement 5: Employee Selector Strip for Admin / Manager
+      // Step 1 & 2: Team + Employee filters — ADMIN only
+      if (currentManager != null) {
+
+      // Step 1: Filter by Team
       item {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text(
-            text = "Filter by Employee",
-            fontSize = 12.sp,
-            color = Color(0xFF9CA3AF),
-            fontWeight = FontWeight.Medium
+            text = "Select Team",
+            fontSize = 13.sp,
+            color = Color.Black,
+            fontWeight = FontWeight.SemiBold
           )
-
-          LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-          ) {
-            item {
-              val isAllSel = selectedEmployeeIdFilter == "All"
-              Box(
-                modifier = Modifier
-                  .clip(RoundedCornerShape(16.dp))
-                  .background(if (isAllSel) Color(0xFF4338CA) else Color(0xFF191A22))
-                  .border(1.dp, if (isAllSel) Color(0xFF6366F1) else Color(0xFF2B2D3A), RoundedCornerShape(16.dp))
-                  .clickable { selectedEmployeeIdFilter = "All" }
-                  .padding(horizontal = 14.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-              ) {
-                Text("All Employees", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-              }
-            }
-
-            items(sortedMembers) { memberItem ->
-              val emp = memberItem.employee
-              val isSel = selectedEmployeeIdFilter == emp.employeeId
-              Box(
-                modifier = Modifier
-                  .clip(RoundedCornerShape(16.dp))
-                  .background(if (isSel) Color(0xFF4338CA) else Color(0xFF191A22))
-                  .border(1.dp, if (isSel) Color(0xFF6366F1) else Color(0xFF2B2D3A), RoundedCornerShape(16.dp))
-                  .clickable { selectedEmployeeIdFilter = emp.employeeId }
-                  .padding(horizontal = 14.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-              ) {
-                Text("${emp.name} (${emp.employeeId})", fontSize = 12.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, color = Color.White)
-              }
-            }
-          }
-        }
-      }
-
-      // Team Filter Chips
-      item {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text(
-            text = "Filter by Team",
-            fontSize = 12.sp,
-            color = Color(0xFF9CA3AF),
-            fontWeight = FontWeight.Medium
-          )
-
           LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
@@ -627,9 +591,12 @@ fun TeamHistoryScreen(
               Box(
                 modifier = Modifier
                   .clip(RoundedCornerShape(16.dp))
-                  .background(if (isSel) Color(0xFF059669) else Color(0xFF191A22))
-                  .border(1.dp, if (isSel) Color(0xFF10B981) else Color(0xFF2B2D3A), RoundedCornerShape(16.dp))
-                  .clickable { selectedTeamFilter = teamName }
+                  .background(if (isSel) MintGreen else Color(0xFFEEEEEE))
+                  .border(1.dp, if (isSel) SelectedBorder else Color(0xFFD1D5DB), RoundedCornerShape(16.dp))
+                  .clickable {
+                    selectedTeamFilter = teamName
+                    selectedEmployeeIdFilter = "All" // reset employee when team changes
+                  }
                   .padding(horizontal = 14.dp, vertical = 6.dp)
                   .testTag("team_filter_$teamName"),
                 contentAlignment = Alignment.Center
@@ -638,13 +605,80 @@ fun TeamHistoryScreen(
                   text = teamName,
                   fontSize = 12.sp,
                   fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                  color = Color.White
+                  color = Color.Black
                 )
               }
             }
           }
         }
       }
+
+      // Step 2: Filter by Employee (filtered by selected team)
+      item {
+        val teamEmployees = remember(sortedMembers, selectedTeamFilter) {
+          if (selectedTeamFilter == "All Teams") sortedMembers
+          else sortedMembers.filter { m ->
+            m.employee.team.equals(selectedTeamFilter, ignoreCase = true) ||
+            m.employee.department.equals(selectedTeamFilter, ignoreCase = true)
+          }
+        }
+        if (teamEmployees.isNotEmpty()) {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+              text = "Select Employee",
+              fontSize = 13.sp,
+              color = Color.Black,
+              fontWeight = FontWeight.SemiBold
+            )
+            LazyRow(
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+              modifier = Modifier.fillMaxWidth()
+            ) {
+              item {
+                val isAllSel = selectedEmployeeIdFilter == "All"
+                Box(
+                  modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isAllSel) CoralPrimary else Color(0xFFEEEEEE))
+                    .border(1.dp, if (isAllSel) CoralPrimary else Color(0xFFD1D5DB), RoundedCornerShape(16.dp))
+                  .clickable { selectedEmployeeIdFilter = "All" }
+                  .padding(horizontal = 14.dp, vertical = 6.dp),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Text(
+                    text = "All",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isAllSel) Color.White else Color.Black
+                  )
+                }
+              }
+              items(teamEmployees) { memberItem ->
+                val emp = memberItem.employee
+                val isSel = selectedEmployeeIdFilter == emp.employeeId
+                Box(
+                  modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isSel) CoralPrimary else Color(0xFFEEEEEE))
+                    .border(1.dp, if (isSel) CoralPrimary else Color(0xFFD1D5DB), RoundedCornerShape(16.dp))
+                  .clickable { selectedEmployeeIdFilter = emp.employeeId }
+                  .padding(horizontal = 14.dp, vertical = 6.dp),
+                  contentAlignment = Alignment.Center
+                ) {
+                  Text(
+                    text = emp.name,
+                    fontSize = 12.sp,
+                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSel) Color.White else Color.Black
+                  )
+                }
+              }
+            }
+          }
+        }
+      }
+
+      } // end admin-only team+employee filters
 
       // Requirement 8: Loading State
       if (isLoadingHistory && historyEodList.isEmpty()) {
@@ -659,8 +693,8 @@ fun TeamHistoryScreen(
               horizontalAlignment = Alignment.CenterHorizontally,
               verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-              CircularProgressIndicator(color = Color(0xFF60A5FA), strokeWidth = 3.dp)
-              Text("Fetching EOD reports from eodReports collection...", fontSize = 13.sp, color = Color(0xFF9CA3AF))
+              CircularProgressIndicator(color = CoralPrimary, strokeWidth = 3.dp)
+              Text("Fetching EOD reports from eodReports collection...", fontSize = 13.sp, color = SubtleText)
             }
           }
         }
@@ -704,20 +738,20 @@ fun TeamHistoryScreen(
           Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF14151D),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF282A38))
+            color = Color.White,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8D5C4))
           ) {
             Column(
               modifier = Modifier.padding(32.dp),
               horizontalAlignment = Alignment.CenterHorizontally,
               verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-              Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF9CA3AF), modifier = Modifier.size(36.dp))
-              Text("No EOD found for this range", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+              Icon(Icons.Default.Info, contentDescription = null, tint = SubtleText, modifier = Modifier.size(36.dp))
+              Text("No EOD found for this range", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
               Text(
                 "Try selecting a different date range or employee filter above.",
                 fontSize = 12.sp,
-                color = Color(0xFF9CA3AF)
+                color = Color.Black
               )
             }
           }
@@ -742,12 +776,12 @@ fun TeamHistoryScreen(
               text = record.dayNumber,
               fontSize = 17.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White
+              color = Color.Black
             )
             Text(
               text = record.dayName,
               fontSize = 12.sp,
-              color = Color(0xFF71717A)
+              color = Color.Black
             )
           }
 
@@ -758,14 +792,14 @@ fun TeamHistoryScreen(
               text = record.title,
               fontSize = 14.sp,
               fontWeight = if (record.status == "Missed") FontWeight.Normal else FontWeight.Medium,
-              color = if (record.status == "Missed") Color(0xFF71717A) else Color.White,
+              color = if (record.status == "Missed") Color(0xFF71717A) else Color.Black,
               maxLines = 1
             )
             record.rawEod?.let { raw ->
               Text(
                 text = "${raw.employeeName} • ${raw.date}",
                 fontSize = 11.sp,
-                color = Color(0xFF9CA3AF)
+                color = Color.Black
               )
             }
           }
@@ -776,7 +810,7 @@ fun TeamHistoryScreen(
         }
 
         HorizontalDivider(
-          color = Color(0xFF1A1B24),
+          color = Color(0xFFE8D5C4),
           thickness = 0.5.dp
         )
       }
@@ -793,7 +827,7 @@ fun TeamHistoryScreen(
             Button(
               onClick = { loadEodHistoryFromFirestore(reset = false) },
               enabled = !isLoadingHistory,
-              colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+              colors = ButtonDefaults.buttonColors(containerColor = CoralPrimary),
               shape = RoundedCornerShape(12.dp)
             ) {
               if (isLoadingHistory) {
@@ -817,8 +851,8 @@ fun TeamHistoryScreen(
     Dialog(onDismissRequest = { selectedDayItemForDetail = null }) {
       Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF14151D),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF282A38)),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8D5C4)),
         modifier = Modifier.fillMaxWidth()
       ) {
         Column(
@@ -835,12 +869,12 @@ fun TeamHistoryScreen(
                 text = "${dayItem.dayNumber} · ${dayItem.dayName}",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.Black
               )
               Text(
                 text = dayItem.rawEod?.employeeName ?: "Employee",
                 fontSize = 12.sp,
-                color = Color(0xFF9CA3AF)
+                color = Color.Black
               )
             }
 
@@ -848,41 +882,92 @@ fun TeamHistoryScreen(
               onClick = { selectedDayItemForDetail = null },
               modifier = Modifier.size(28.dp)
             ) {
-              Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF9CA3AF))
+              Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Black)
             }
           }
 
-          HorizontalDivider(color = Color(0xFF282A38))
+          HorizontalDivider(color = Color(0xFFE8D5C4))
 
           Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Text("Reporting Status", fontSize = 13.sp, color = Color(0xFF9CA3AF))
+            Text("Reporting Status", fontSize = 13.sp, color = Color.Black)
             StatusBadgePill(status = dayItem.status)
           }
 
           Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Work Summary", fontSize = 12.sp, color = Color(0xFF9CA3AF))
-            Text(
-              text = dayItem.rawEod?.todayWork?.ifBlank { dayItem.title } ?: dayItem.title,
-              fontSize = 14.sp,
-              color = Color.White
-            )
+            Text("Work Summary", fontSize = 12.sp, color = Color.Black)
+            val rawEod = dayItem.rawEod
+            val customJson = rawEod?.customFormData?.takeIf { it.isNotBlank() }
+            val eodFormType = rawEod?.eodFormType ?: ""
+            if (customJson != null) {
+              // Parse and display real custom form data
+              when {
+                eodFormType.contains("MARKETING", ignoreCase = true) -> {
+                  val data = com.example.data.CustomFormDataSerializer.deserializeMarketing(customJson)
+                  if (data != null && data.visits.isNotEmpty()) {
+                    data.visits.forEachIndexed { i, v ->
+                      Column(
+                        modifier = Modifier.padding(bottom = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                      ) {
+                        Text("Visit ${i + 1}: ${v.collegeName}", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.SemiBold)
+                        if (v.personVisited.isNotBlank()) Text("Person: ${v.personVisited} (${v.designation})", fontSize = 12.sp, color = Color.Black)
+                        if (v.description.isNotBlank()) Text(v.description, fontSize = 12.sp, color = Color.Black)
+                      }
+                    }
+                  } else Text(customJson, fontSize = 13.sp, color = Color.Black)
+                }
+                eodFormType.contains("COUNSELLOR", ignoreCase = true) -> {
+                  val data = com.example.data.CustomFormDataSerializer.deserializeCounsellor(customJson)
+                  if (data != null && data.students.isNotEmpty()) {
+                    data.students.forEachIndexed { i, s ->
+                      Column(
+                        modifier = Modifier.padding(bottom = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                      ) {
+                        Text("Student ${i + 1}: ${s.studentName}", fontSize = 13.sp, color = Color.Black, fontWeight = FontWeight.SemiBold)
+                        Text("University: ${s.universityName} · ${s.country}", fontSize = 12.sp, color = Color.Black)
+                        Text("Status: ${s.status}", fontSize = 12.sp, color = CoralPrimary)
+                        if (s.description.isNotBlank()) Text(s.description, fontSize = 12.sp, color = Color.Black)
+                      }
+                    }
+                  } else Text(customJson, fontSize = 13.sp, color = Color.Black)
+                }
+                eodFormType.contains("TELECALL", ignoreCase = true) -> {
+                  val data = com.example.data.CustomFormDataSerializer.deserializeTelecalling(customJson)
+                  if (data != null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                      Text("Calls Made: ${data.callsMade}  |  Follow-ups: ${data.followUps}  |  Conversions: ${data.conversions}", fontSize = 13.sp, color = Color.Black)
+                      Text("Status: ${data.status}", fontSize = 12.sp, color = CoralPrimary)
+                      if (data.description.isNotBlank()) Text(data.description, fontSize = 12.sp, color = Color.Black)
+                    }
+                  } else Text(customJson, fontSize = 13.sp, color = Color.Black)
+                }
+                else -> Text(rawEod?.todayWork?.ifBlank { dayItem.title } ?: dayItem.title, fontSize = 14.sp, color = Color.Black)
+              }
+            } else {
+              Text(
+                text = rawEod?.todayWork?.ifBlank { dayItem.title } ?: dayItem.title,
+                fontSize = 14.sp,
+                color = Color.Black
+              )
+            }
           }
 
           dayItem.rawEod?.let { raw ->
             if (raw.project.isNotBlank()) {
               Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Project", fontSize = 12.sp, color = Color(0xFF9CA3AF))
-                Text(raw.project, fontSize = 14.sp, color = Color(0xFF60A5FA), fontWeight = FontWeight.Medium)
+                Text("Project", fontSize = 12.sp, color = Color.Black)
+                Text(raw.project, fontSize = 14.sp, color = CoralPrimary, fontWeight = FontWeight.Medium)
               }
             }
 
             if (raw.blockers.isNotBlank()) {
               Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Blockers & Remarks", fontSize = 12.sp, color = Color(0xFF9CA3AF))
+                Text("Blockers & Remarks", fontSize = 12.sp, color = Color.Black)
                 Text(raw.blockers, fontSize = 13.sp, color = Color(0xFFF87171))
               }
             }

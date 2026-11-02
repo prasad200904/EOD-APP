@@ -24,7 +24,7 @@ const args = process.argv.slice(2);
 const isExecuteMode = args.includes('--write') || args.includes('--execute');
 const isDryRun = !isExecuteMode;
 
-console.log('====================================================');
+console.log('====================check================================');
 console.log(`🚀 WORKCORE FIRESTORE EMPLOYEE IMPORTER`);
 console.log(`MODE      : ${isDryRun ? '🔍 DRY-RUN (Preview Only - No changes written)' : '⚡ WRITE MODE (Writing to Firestore)'}`);
 console.log('====================================================\n');

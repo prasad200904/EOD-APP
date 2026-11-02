@@ -461,6 +461,12 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     viewModelScope.launch {
       android.util.Log.d("WorkCoreAuth", "Selecting department team: '$teamName'")
 
+      val cleanPassword = password.trim()
+      if (cleanPassword.isBlank()) {
+        onResult(false, "Please enter the department password.")
+        return@launch
+      }
+
       val team = teams.value.firstOrNull { 
         it.name.equals(teamName, ignoreCase = true) || 
         it.department.equals(teamName, ignoreCase = true)
@@ -472,7 +478,27 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
         return@launch
       }
 
-      // Password-free: team selection sets active roster view
+      val teamCode = when {
+        team.name.contains("General", ignoreCase = true) || team.name.contains("GT", ignoreCase = true) -> "gt123"
+        team.name.contains("ML", ignoreCase = true) -> "ml123"
+        team.name.contains("DB", ignoreCase = true) -> "db123"
+        team.name.contains("Cyber", ignoreCase = true) -> "cyber123"
+        team.name.contains("Writing", ignoreCase = true) -> "write123"
+        team.name.contains("Marketing", ignoreCase = true) -> "marketing123"
+        team.name.contains("Counsellor", ignoreCase = true) -> "counsellor123"
+        team.name.contains("Tele", ignoreCase = true) -> "telecaller123"
+        else -> null
+      }
+
+      val isPasscodeValid = (team.teamPassword.isNotBlank() && team.teamPassword == cleanPassword) ||
+          teamCode == cleanPassword
+
+      if (!isPasscodeValid) {
+        onResult(false, "Invalid passcode for ${team.name}.")
+        return@launch
+      }
+
+      // Passcode is valid: set active roster view
       currentDepartmentTeam.value = team.name
       currentRole.value = Role.EMPLOYEE
       activeRosterEmployee.value = null
@@ -888,8 +914,17 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
 
   fun sendPasswordReset(email: String, onResult: (Boolean, String) -> Unit) {
     viewModelScope.launch {
-      repository.authRepository.sendPasswordReset(email)
-      onResult(true, "If an account exists for this email, password setup instructions have been sent.")
+      repository.authRepository.sendPasswordReset(email).fold(
+        onSuccess = {
+          onResult(
+            true,
+            "If that address is registered, a password-reset email has been sent. Sign in with that same email address."
+          )
+        },
+        onFailure = {
+          onResult(false, "Could not send the reset email. Check your connection and try again.")
+        }
+      )
     }
   }
 

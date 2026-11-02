@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.app.DatePickerDialog
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -136,7 +137,7 @@ fun PreviousEodScreen(
         modifier = Modifier
           .fillMaxWidth()
           .clip(RoundedCornerShape(20.dp)),
-        color = Color(0xFF21005D)
+        color = DarkSlateDeep
       ) {
         Column(
           modifier = Modifier
@@ -240,7 +241,7 @@ fun PreviousEodScreen(
               shape = RoundedCornerShape(12.dp),
               colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
-                contentColor = Color(0xFF21005D)
+                contentColor = DarkSlateDeep
               ),
               modifier = Modifier
                 .height(52.dp)
@@ -267,7 +268,7 @@ fun PreviousEodScreen(
                   text = "Today (${SeedData.TODAY})",
                   fontSize = 11.sp,
                   fontWeight = FontWeight.Bold,
-                  color = if (targetDate == SeedData.TODAY) Color(0xFF21005D) else Color.White,
+                  color = if (targetDate == SeedData.TODAY) DarkSlateDeep else Color.White,
                   modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                 )
               }
@@ -282,7 +283,7 @@ fun PreviousEodScreen(
                   text = "Yesterday (${SeedData.DAY_1})",
                   fontSize = 11.sp,
                   fontWeight = FontWeight.Bold,
-                  color = if (targetDate == SeedData.DAY_1) Color(0xFF21005D) else Color.White,
+                  color = if (targetDate == SeedData.DAY_1) DarkSlateDeep else Color.White,
                   modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                 )
               }
@@ -297,7 +298,7 @@ fun PreviousEodScreen(
                   text = SeedData.DAY_2,
                   fontSize = 11.sp,
                   fontWeight = FontWeight.Bold,
-                  color = if (targetDate == SeedData.DAY_2) Color(0xFF21005D) else Color.White,
+                  color = if (targetDate == SeedData.DAY_2) DarkSlateDeep else Color.White,
                   modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                 )
               }
@@ -312,7 +313,7 @@ fun PreviousEodScreen(
                   text = SeedData.DAY_3,
                   fontSize = 11.sp,
                   fontWeight = FontWeight.Bold,
-                  color = if (targetDate == SeedData.DAY_3) Color(0xFF21005D) else Color.White,
+                  color = if (targetDate == SeedData.DAY_3) DarkSlateDeep else Color.White,
                   modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                 )
               }
@@ -351,7 +352,7 @@ fun PreviousEodScreen(
               text = "$totalSubmissions employee submissions",
               fontSize = 12.sp,
               fontWeight = FontWeight.Bold,
-              color = Color(0xFF21005D)
+              color = DarkSlateDeep
             )
           }
 
@@ -367,7 +368,7 @@ fun PreviousEodScreen(
             ) {
               Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = "Total Hours", fontSize = 10.sp, color = Color(0xFF49454F))
-                Text(text = "${String.format(Locale.US, "%.1f", totalHours)}h", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                Text(text = "${String.format(Locale.US, "%.1f", totalHours)}h", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
               }
             }
             Surface(
@@ -376,8 +377,8 @@ fun PreviousEodScreen(
               modifier = Modifier.weight(1f)
             ) {
               Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "Completed", fontSize = 10.sp, color = Color(0xFF1B5E20))
-                Text(text = "$completedCount", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+                Text(text = "Completed", fontSize = 10.sp, color = Color(0xFF10B981))
+                Text(text = "$completedCount", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
               }
             }
             Surface(
@@ -438,7 +439,7 @@ fun PreviousEodScreen(
               label = { Text(chip, fontSize = 11.sp, fontWeight = FontWeight.Medium) },
               colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = Color(0xFFEADDFF),
-                selectedLabelColor = Color(0xFF21005D)
+                selectedLabelColor = DarkSlateDeep
               )
             )
           }
@@ -470,7 +471,7 @@ fun PreviousEodScreen(
               text = "No EOD Data Found for $targetDate",
               fontSize = 15.sp,
               fontWeight = FontWeight.Bold,
-              color = Color(0xFF1D1B20)
+              color = DarkSlateDeep
             )
             Text(
               text = "Try picking another date like ${SeedData.TODAY} or ${SeedData.DAY_1} using the date selector above.",
@@ -511,7 +512,7 @@ private fun PreviousEodRecordCard(
   modifier: Modifier = Modifier
 ) {
   val statusColor = when (eod.workStatus.lowercase()) {
-    "completed" -> Color(0xFF1B5E20)
+    "completed" -> Color(0xFF10B981)
     "in progress" -> Color(0xFF0D47A1)
     "blocked" -> Color(0xFFB71C1C)
     "on leave" -> Color(0xFFE65100)
@@ -556,7 +557,7 @@ private fun PreviousEodRecordCard(
               text = eod.employeeName,
               fontSize = 14.sp,
               fontWeight = FontWeight.Bold,
-              color = Color(0xFF1D1B20)
+              color = DarkSlateDeep
             )
             Text(
               text = "${eod.employeeId} • ${employee?.team ?: "Team"}",
@@ -601,7 +602,7 @@ private fun PreviousEodRecordCard(
             text = eod.project,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF21005D)
+            color = DarkSlateDeep
           )
         }
 
@@ -630,7 +631,7 @@ private fun PreviousEodRecordCard(
           Text(
             text = eod.todayWork,
             fontSize = 12.sp,
-            color = Color(0xFF1D1B20),
+            color = DarkSlateDeep,
             lineHeight = 17.sp,
             modifier = Modifier.padding(10.dp)
           )

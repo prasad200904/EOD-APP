@@ -97,6 +97,7 @@ import com.example.ui.screens.AddEmployeeByManagerDialog
 import com.example.ui.screens.AddEmployeeScreen
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.AdminDashboardScreen
+import com.example.ui.screens.AdminHistoryScreen
 import com.example.ui.screens.CreateOrEditTeamDialog
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.DownloadEodScreen
@@ -473,15 +474,10 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
           }
           AppTab.EOD_HISTORY -> {
             if (currentRole == Role.ADMIN) {
-              TeamHistoryScreen(
-                currentManager = authSession?.employee,
-                allDepartments = departments,
-                selectedDepartmentCode = selectedDepartmentCode,
-                onDepartmentSelect = { viewModel.selectedDepartmentCode.value = it },
-                teamMembers = managerTeamMembers,
+              AdminHistoryScreen(
+                employees = employees,
                 eods = dailyEods,
-                onAvatarClick = { showProfileDialog = true },
-                onLogout = { viewModel.logout() }
+                onAvatarClick = { showProfileDialog = true }
               )
             } else {
                val currentDeptName = authSession?.departmentTeam ?: "GT Team"

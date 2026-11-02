@@ -62,9 +62,9 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun `sendPasswordReset returns generic success for valid email`() = runBlocking {
+    fun `sendPasswordReset fails when Firebase Auth is unavailable`() = runBlocking {
         val authRepo = AuthRepository { null }
         val result = authRepo.sendPasswordReset("user@example.com")
-        assertTrue("Password reset should return generic success", result.isSuccess)
+        assertTrue("Password reset should fail when Firebase Auth is unavailable", result.isFailure)
     }
 }

@@ -186,7 +186,7 @@ data class TeamEntity(
   val createdDate: String = "2024-01-01",
   val status: String = "Active", // "Active", "Inactive"
   val description: String = "",
-  val teamPassword: String = "" // Team-level login password (deprecated, password-free login)
+  val teamPassword: String = "" // Team-level password is not stored in the local database
 )
 
 @Entity(

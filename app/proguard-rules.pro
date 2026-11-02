@@ -111,3 +111,25 @@
   volatile <fields>;
 }
 
+# ==========================================
+# GSON & CUSTOM FORM DATA MODELS
+# ==========================================
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# Keep all form data classes and their fields for JSON serialization
+-keepclassmembers class com.example.data.*FormData { <fields>; }
+-keep class com.example.data.*FormData { *; }
+-keepclassmembers class com.example.data.StudentEntry { <fields>; }
+-keep class com.example.data.StudentEntry { *; }
+-keepclassmembers class com.example.data.CustomTeamMetrics { <fields>; }
+-keep class com.example.data.CustomTeamMetrics { *; }
+-keepclassmembers class com.example.data.CustomFormSubmission { <fields>; }
+-keep class com.example.data.CustomFormSubmission { *; }
+
+

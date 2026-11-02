@@ -807,6 +807,11 @@ class WorkCoreRepository(
     if (passwordInput.isEmpty()) {
       return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Please enter your password."))
     }
+    if (role == Role.ADMIN && !cleanId.contains("@")) {
+      return@withContext Result.failure<EmployeeEntity>(
+        IllegalArgumentException("Enter the registered admin email address, not the username.")
+      )
+    }
 
     val allEmps = employeeDao.getAllEmployees().first()
 
@@ -821,7 +826,9 @@ class WorkCoreRepository(
       cleanId.contains("@") -> cleanId
       localEmp != null && localEmp.email.isNotBlank() -> localEmp.email
       cleanId.equals("admin", ignoreCase = true) -> {
-        SeedData.employees.firstOrNull { it.employeeId.equals("ADMIN", ignoreCase = true) }?.email ?: "admin@workcore.com"
+        localEmp?.email?.ifBlank { null }
+          ?: SeedData.employees.firstOrNull { it.employeeId.equals("ADMIN", ignoreCase = true) }?.email
+          ?: "admin@workcore.com"
       }
       else -> {
         return@withContext Result.failure<EmployeeEntity>(
@@ -858,8 +865,10 @@ class WorkCoreRepository(
     // Load / sync employee
     val matchedEmp = session.employeeId?.let { employeeDao.getEmployeeById(it) }
       ?: localEmp
+      ?: allEmps.firstOrNull { it.email.equals(session.email, ignoreCase = true) }
       ?: if (session.isAdmin) {
-          SeedData.employees.firstOrNull { it.employeeId.equals("ADMIN", ignoreCase = true) }
+          SeedData.employees.firstOrNull { it.email.equals(session.email, ignoreCase = true) }
+            ?: SeedData.employees.firstOrNull { it.employeeId.equals("ADMIN", ignoreCase = true) }
         } else null
 
     val resolvedEmp = matchedEmp ?: EmployeeEntity(

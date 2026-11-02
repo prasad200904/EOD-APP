@@ -12,14 +12,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudUpload
@@ -52,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.DepartmentEntity
 import com.example.data.CompanyEntity
+import com.example.data.DailyEodEntity
 import com.example.data.EmployeeEntity
 import com.example.data.TeamMemberBehaviorItem
 import com.example.ui.theme.CoralPrimary
@@ -99,38 +103,22 @@ fun AdminDashboardScreen(
   modifier: Modifier = Modifier
 ) {
   var selectedMemberForDetail by remember { mutableStateOf<TeamMemberBehaviorItem?>(null) }
-  var sortByPendingFirst by remember { mutableStateOf(true) }
 
-  // Filter members if a specific department is chosen
-  val filteredMembers = remember(teamMembers, selectedDepartmentCode, sortByPendingFirst) {
-    val list = if (selectedDepartmentCode == "ALL" || selectedDepartmentCode.isBlank()) {
-      teamMembers
-    } else {
-      teamMembers.filter {
-        it.employee.department.equals(selectedDepartmentCode, ignoreCase = true) ||
-          it.employee.team.contains(selectedDepartmentCode, ignoreCase = true) ||
-          it.employee.departmentId.contains(selectedDepartmentCode, ignoreCase = true)
-      }
-    }
-    if (sortByPendingFirst) {
-      list.sortedWith(compareBy({ it.todayStatus != "Pending" }, { it.submissionRate }))
-    } else {
-      list.sortedBy { it.submissionRate }
-    }
+  // teamMembers is already filtered by the ViewModel/Repository using the correct code↔name mapping.
+  // Sort: submitted (Done) first, then alphabetical within each group.
+  val filteredMembers = remember(teamMembers) {
+    teamMembers.sortedWith(compareBy({ it.todayEod == null }, { it.employee.name }))
   }
 
   val displaySubmitted = remember(filteredMembers) {
-    filteredMembers.count { it.todayStatus == "Done" }
+    filteredMembers.count { it.todayEod != null }
   }
   val displayTotal = filteredMembers.size
   val displayOnLeave = remember(filteredMembers) {
-    filteredMembers.count { it.todayStatus == "Leave" }
+    filteredMembers.count { it.todayEod?.let(::isLeaveSubmission) == true }
   }
-  val displayMissedTotal = remember(filteredMembers) {
-    filteredMembers.fold(0) { acc, item -> acc + item.missedCount }
-  }
-  val displayLateTotal = remember(filteredMembers) {
-    filteredMembers.fold(0) { acc, item -> acc + item.lateCount }
+  val displayPending = remember(filteredMembers) {
+    filteredMembers.count { it.todayEod == null }
   }
 
   Box(
@@ -425,7 +413,7 @@ fun AdminDashboardScreen(
             }
           }
 
-          // Missed Days Rollup
+          // Pending today
           Surface(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(14.dp),
@@ -434,16 +422,16 @@ fun AdminDashboardScreen(
           ) {
             Column(modifier = Modifier.padding(14.dp)) {
               Text(
-                text = "Total Missed",
+                text = "Pending today",
                 fontSize = 11.sp,
                 color = WarmTextMuted
               )
               Spacer(modifier = Modifier.height(4.dp))
               Text(
-                text = "$displayMissedTotal",
+                text = "$displayPending",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (displayMissedTotal > 0) Color(0xFFF87171) else Color(0xFF34D399)
+                color = if (displayPending > 0) Color(0xFFF87171) else Color(0xFF34D399)
               )
             }
           }
@@ -454,7 +442,6 @@ fun AdminDashboardScreen(
       item {
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
           Column {
@@ -465,26 +452,9 @@ fun AdminDashboardScreen(
               color = DarkSlateDeep
             )
             Text(
-              text = "Today's submission status per employee",
+              text = "Submitted first · Today's EOD status",
               fontSize = 11.sp,
               color = WarmTextMuted
-            )
-          }
-
-          Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = if (sortByPendingFirst) WarmCardWhite else Color.Transparent,
-            border = BorderStroke(1.dp, WarmCardBorder),
-            modifier = Modifier
-              .clickable { sortByPendingFirst = !sortByPendingFirst }
-              .testTag("sort_pending_first_btn")
-          ) {
-            Text(
-              text = if (sortByPendingFirst) "Pending first" else "Name order",
-              fontSize = 11.sp,
-              fontWeight = FontWeight.Medium,
-              color = DarkSlateDeep,
-              modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
             )
           }
         }
@@ -500,9 +470,9 @@ fun AdminDashboardScreen(
       }
     }
 
-    // Detail Modal when tapping on employee behavior rollup
+    // Show the employee's current EOD submission instead of behavior rollups.
     selectedMemberForDetail?.let { item ->
-      AdminBehaviorDetailModal(
+      AdminEodStatusModal(
         item = item,
         onDismiss = { selectedMemberForDetail = null },
         onSendNudge = {
@@ -522,6 +492,15 @@ private fun AdminEmployeeLiveStatusCard(
   modifier: Modifier = Modifier
 ) {
   val emp = item.employee
+  val eod = item.todayEod
+  val isLeave = eod?.let(::isLeaveSubmission) == true
+  val isDone = eod != null && !isLeave
+  val statusLabel = when {
+    isLeave -> "On leave"
+    eod == null -> "Pending"
+    eod.workStatus.isBlank() -> "Submitted"
+    else -> eod.workStatus
+  }
   val initials = remember(emp.name) {
     val parts = emp.name.trim().split(" ")
     if (parts.size >= 2) "${parts[0].first()}${parts[1].first()}".uppercase()
@@ -529,9 +508,9 @@ private fun AdminEmployeeLiveStatusCard(
   }
 
   Surface(
-    shape = RoundedCornerShape(14.dp),
-    color = WarmCardWhite,
-    border = BorderStroke(1.dp, WarmCardBorder),
+    shape = RoundedCornerShape(10.dp),
+    color = if (isDone) Color(0xFFD1FAE5) else WarmCardWhite,
+    border = BorderStroke(1.dp, if (isDone) Color(0xFF6EE7B7) else WarmCardBorder),
     modifier = modifier
       .fillMaxWidth()
       .clickable { onClick() }
@@ -540,7 +519,7 @@ private fun AdminEmployeeLiveStatusCard(
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(14.dp),
+        .padding(horizontal = 14.dp, vertical = 10.dp),
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically
     ) {
@@ -549,169 +528,105 @@ private fun AdminEmployeeLiveStatusCard(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.weight(1f)
       ) {
+        // Avatar
         Box(
           modifier = Modifier
-            .size(38.dp)
+            .size(34.dp)
             .clip(CircleShape)
-            .background(CoralPrimary),
+            .background(if (isDone) Color(0xFF10B981) else CoralPrimary),
           contentAlignment = Alignment.Center
         ) {
           Text(
             text = initials,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
           )
         }
-
         Column {
-          Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Text(
-              text = emp.name,
-              fontSize = 14.sp,
-              fontWeight = FontWeight.SemiBold,
-              color = DarkSlateDeep
-            )
-            Surface(
-              shape = RoundedCornerShape(4.dp),
-              color = CoralPrimary.copy(alpha = 0.1f),
-              border = BorderStroke(1.dp, CoralPrimary)
-            ) {
-              Text(
-                text = emp.department,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = CoralPrimary,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-              )
-            }
-          }
           Text(
-            text = "${emp.employeeId} · ${emp.designation}",
+            text = emp.name,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = DarkSlateDeep,
+            maxLines = 1
+          )
+          Text(
+            text = "${emp.employeeId} · ${emp.team}",
             fontSize = 11.sp,
             color = WarmTextMuted
           )
         }
       }
-
-      Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+      // Status pill — compact
+      Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = when {
+          isDone -> Color(0xFF10B981)
+          isLeave -> Color(0xFFF59E0B)
+          else -> Color(0xFFE5E7EB)
+        }
       ) {
-        // Today's Status Pill
-        when (item.todayStatus) {
-          "Done" -> {
-            Surface(
-              shape = RoundedCornerShape(20.dp),
-              color = EodDonePillBg
-            ) {
-              Text(
-                text = "Done",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = EodDonePillText,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-              )
-            }
-          }
-          "Leave" -> {
-            Surface(
-              shape = RoundedCornerShape(20.dp),
-              color = Color(0xFF2E2412)
-            ) {
-              Text(
-                text = "Leave",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFFBBF24),
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-              )
-            }
-          }
-          else -> {
-            Surface(
-              shape = RoundedCornerShape(20.dp),
-              color = EodActivePillBg
-            ) {
-              Text(
-                text = "Pending",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = EodActivePillText,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-              )
-            }
-          }
-        }
-
-        // Nudge action if pending
-        if (item.todayStatus == "Pending") {
-          Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = CoralPrimary.copy(alpha = 0.1f),
-            border = BorderStroke(1.dp, CoralPrimary),
-            modifier = Modifier.clickable { onNudge() }
-          ) {
-            Row(
-              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-              horizontalArrangement = Arrangement.spacedBy(4.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Icon(Icons.Default.Send, contentDescription = null, tint = CoralPrimary, modifier = Modifier.size(11.dp))
-              Text("Nudge", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = CoralPrimary)
-            }
-          }
-        }
+        Text(
+          text = when {
+            isDone -> statusLabel
+            isLeave -> "On leave"
+            else -> "Pending"
+          },
+          fontSize = 11.sp,
+          fontWeight = FontWeight.Bold,
+          color = when {
+            isDone -> Color.White
+            isLeave -> Color.White
+            else -> Color(0xFF6B7280)
+          },
+          modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
       }
     }
   }
 }
 
 @Composable
-private fun AdminBehaviorDetailModal(
+private fun AdminEodStatusModal(
   item: TeamMemberBehaviorItem,
   onDismiss: () -> Unit,
   onSendNudge: () -> Unit
 ) {
-  val emp = item.employee
+  val employee = item.employee
+  val eod = item.todayEod
+  val isLeave = eod?.let(::isLeaveSubmission) == true
+  val status = when {
+    eod == null -> "Pending"
+    isLeave -> "On leave"
+    eod.workStatus.isBlank() -> "Submitted"
+    else -> eod.workStatus
+  }
+
   Dialog(onDismissRequest = onDismiss) {
     Surface(
       shape = RoundedCornerShape(20.dp),
       color = WarmCardWhite,
       border = BorderStroke(1.dp, WarmCardBorder),
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp)
+      modifier = Modifier.fillMaxWidth().padding(16.dp)
     ) {
       Column(
         modifier = Modifier
           .fillMaxWidth()
+          .heightIn(max = 560.dp)
+          .verticalScroll(rememberScrollState())
           .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
-        // Modal Header
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
           Column {
-            Text(
-              text = emp.name,
-              fontSize = 18.sp,
-              fontWeight = FontWeight.Bold,
-              color = DarkSlateDeep
-            )
-            Text(
-              text = "${emp.department} Team · ${emp.employeeId}",
-              fontSize = 12.sp,
-              color = WarmTextMuted
-            )
+            Text(employee.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
+            Text("${employee.department} · ${employee.employeeId}", fontSize = 12.sp, color = WarmTextMuted)
           }
-
           IconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = "Close", tint = WarmTextMuted)
           }
@@ -719,81 +634,45 @@ private fun AdminBehaviorDetailModal(
 
         HorizontalDivider(color = WarmCardBorder)
 
-        // 4 Rollup metrics
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Surface(
+          shape = RoundedCornerShape(10.dp),
+          color = if (isLeave) Color(0xFFFFF7ED) else if (eod == null) Color(0xFFFEF2F2) else Color(0xFFECFDF5),
+          modifier = Modifier.fillMaxWidth()
         ) {
-          // Submission Rate
-          Surface(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(10.dp),
-            color = Color(0xFF0F1017)
-          ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-              Text("Rate", fontSize = 10.sp, color = EodTextMuted)
+          Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("Today's EOD", fontSize = 12.sp, color = WarmTextMuted)
+            Text(status, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
+            if (eod == null) {
+              Text("No EOD submission has been recorded for today.", fontSize = 13.sp, color = WarmTextMuted)
+            } else {
               Text(
-                "${item.submissionRate}%",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (item.submissionRate >= 80) Color(0xFF34D399) else Color(0xFFF87171)
-              )
-            }
-          }
-
-          // Missed Days
-          Surface(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(10.dp),
-            color = Color(0xFF0F1017)
-          ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-              Text("Missed", fontSize = 10.sp, color = EodTextMuted)
-              Text(
-                "${item.missedCount} days",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (item.missedCount > 0) Color(0xFFF87171) else Color(0xFF9CA3AF)
-              )
-            }
-          }
-
-          // Late
-          Surface(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(10.dp),
-            color = Color(0xFF0F1017)
-          ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-              Text("Late", fontSize = 10.sp, color = EodTextMuted)
-              Text(
-                "${item.lateCount}",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (item.lateCount > 0) Color(0xFFFBBF24) else Color(0xFF9CA3AF)
-              )
-            }
-          }
-
-          // Streak
-          Surface(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(10.dp),
-            color = Color(0xFF0F1017)
-          ) {
-            Column(modifier = Modifier.padding(10.dp)) {
-              Text("Streak", fontSize = 10.sp, color = EodTextMuted)
-              Text(
-                "🔥 ${item.currentStreak}d",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFFB923C)
+                "${eod.attendanceStatus} · ${if (eod.isOnTime) "On time" else "Late"} · ${eod.submissionTime}",
+                fontSize = 12.sp,
+                color = WarmTextMuted
               )
             }
           }
         }
 
-        // Details summary
+        if (eod != null) {
+          Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = Color(0xFF14151D),
+            border = BorderStroke(1.dp, EodDarkCardBorder),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+              if (eod.project.isNotBlank()) Text("Project: ${eod.project}", fontSize = 12.sp, color = EodTextSecondary)
+              Text("Progress: ${eod.progressPercentage}%", fontSize = 12.sp, color = EodTextSecondary)
+              if (eod.todayWork.isNotBlank()) Text("Work summary: ${eod.todayWork}", fontSize = 12.sp, color = EodTextSecondary)
+              if (eod.workCompleted.isNotBlank()) Text("Completed: ${eod.workCompleted}", fontSize = 12.sp, color = EodTextSecondary)
+              if (eod.blockers.isNotBlank()) Text("Blockers: ${eod.blockers}", fontSize = 12.sp, color = EodTextSecondary)
+              if (eod.remarks.isNotBlank()) Text("Remarks: ${eod.remarks}", fontSize = 12.sp, color = EodTextSecondary)
+              if (eod.tomorrowPlan.isNotBlank()) Text("Next: ${eod.tomorrowPlan}", fontSize = 12.sp, color = EodTextSecondary)
+            }
+          }
+        }
+
         Surface(
           shape = RoundedCornerShape(10.dp),
           color = Color(0xFF14151D),
@@ -801,25 +680,35 @@ private fun AdminBehaviorDetailModal(
           modifier = Modifier.fillMaxWidth()
         ) {
           Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Designation: ${emp.designation}", fontSize = 12.sp, color = EodTextSecondary)
-            Text("Default Project: ${emp.defaultProject}", fontSize = 12.sp, color = EodTextSecondary)
-            Text("Email: ${emp.email}", fontSize = 12.sp, color = EodTextSecondary)
-            Text("Joining Date: ${emp.joiningDate}", fontSize = 12.sp, color = EodTextSecondary)
+            Text("Employee information", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = EodTextSecondary)
+            Text("Designation: ${employee.designation}", fontSize = 12.sp, color = EodTextSecondary)
+            Text("Team: ${employee.team}", fontSize = 12.sp, color = EodTextSecondary)
+            Text("Company: ${employee.companyId}", fontSize = 12.sp, color = EodTextSecondary)
+            if (employee.defaultProject.isNotBlank()) Text("Default project: ${employee.defaultProject}", fontSize = 12.sp, color = EodTextSecondary)
+            if (employee.email.isNotBlank()) Text("Email: ${employee.email}", fontSize = 12.sp, color = EodTextSecondary)
+            if (employee.phone.isNotBlank()) Text("Phone: ${employee.phone}", fontSize = 12.sp, color = EodTextSecondary)
+            if (employee.joiningDate.isNotBlank()) Text("Joining date: ${employee.joiningDate}", fontSize = 12.sp, color = EodTextSecondary)
           }
         }
 
-        // Action Button
-        Button(
-          onClick = onSendNudge,
-          shape = RoundedCornerShape(12.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = EodPrimaryPurple),
-          modifier = Modifier.fillMaxWidth()
-        ) {
-          Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
-          Spacer(modifier = Modifier.width(6.dp))
-          Text("Send EOD Reminder Nudge", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        if (eod == null) {
+          Button(
+            onClick = onSendNudge,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EodPrimaryPurple),
+            modifier = Modifier.fillMaxWidth()
+          ) {
+            Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Send EOD Reminder", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+          }
         }
       }
     }
   }
 }
+
+private fun isLeaveSubmission(eod: DailyEodEntity): Boolean =
+  eod.workStatus.equals("On Leave", ignoreCase = true) ||
+    eod.attendanceStatus.equals("Leave", ignoreCase = true) ||
+    eod.attendanceStatus.equals("Holiday", ignoreCase = true)

@@ -1,6 +1,7 @@
 package com.example
 
 import android.app.Application
+import com.example.util.Analytics
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 
@@ -12,10 +13,12 @@ class WorkCoreApplication : Application() {
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
 
-        // Enable Crashlytics — automatically collects crash reports from all users
+        // Initialize Analytics
+        Analytics.init(this)
+
+        // Enable Crashlytics
         FirebaseCrashlytics.getInstance().apply {
             setCrashlyticsCollectionEnabled(true)
-            // Log app start so we know app launched successfully
             log("WorkCore started - version ${BuildConfig.VERSION_NAME}")
         }
     }

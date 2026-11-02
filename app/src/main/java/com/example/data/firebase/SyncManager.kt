@@ -31,6 +31,7 @@ class SyncManager(
   private val employeeDao = database.employeeDao()
   private val departmentDao = database.departmentDao()
   private val teamDao = database.teamDao()
+  private val companyDao = database.companyDao()
 
   private val _syncState = MutableStateFlow(SyncStatus.SYNCED)
   val syncState: StateFlow<SyncStatus> = _syncState.asStateFlow()
@@ -258,6 +259,42 @@ class SyncManager(
         }
       }
 
+      // 9. Upload local companies to Firebase
+      Log.d(TAG, "📤 Uploading local companies to Firebase...")
+      val localCompanies = companyDao.getAllCompanies().first()
+      for (company in localCompanies) {
+        firebaseDataSource.uploadCompany(company)
+      }
+      Log.d(TAG, "✅ Uploaded ${localCompanies.size} companies to Firebase")
+
+      // 10. Download cloud companies and merge with local
+      Log.d(TAG, "📥 Pulling latest companies from Firebase...")
+      val cloudCompaniesRes = firebaseDataSource.fetchCompanies()
+      if (cloudCompaniesRes.isSuccess) {
+        val cloudCompanies = cloudCompaniesRes.getOrNull().orEmpty()
+        var newCompanyCount = 0
+        
+        for (cloudCompany in cloudCompanies) {
+          val localCompany = companyDao.getCompanyById(cloudCompany.companyId)
+          if (localCompany == null) {
+            // New company from another device
+            companyDao.insert(cloudCompany)
+            newCompanyCount++
+            Log.d(TAG, "➕ New company from cloud: ${cloudCompany.name} (${cloudCompany.companyId})")
+          } else if (cloudCompany.updatedAt > localCompany.updatedAt) {
+            // Cloud version is newer, update local
+            companyDao.update(cloudCompany.copy(id = localCompany.id))
+            Log.d(TAG, "🔄 Updated company from cloud: ${cloudCompany.name} (${cloudCompany.companyId})")
+          }
+        }
+        
+        if (newCompanyCount > 0) {
+          Log.i(TAG, "✅ Company sync: $newCompanyCount new")
+        } else {
+          Log.d(TAG, "✅ Companies already in sync")
+        }
+      }
+
       _syncState.value = SyncStatus.SYNCED
       _lastSyncTimestamp.value = System.currentTimeMillis()
       updatePendingCount()
@@ -300,15 +337,22 @@ class SyncManager(
   }
 
   /**
-   * Start periodic background sync every 30 seconds
+   * Periodic background check (every 15 minutes) - only triggers if there are pending/failed items
    */
   private fun startPeriodicSync() {
     syncScope.launch {
       while (true) {
-        kotlinx.coroutines.delay(30000) // 30 seconds
+        kotlinx.coroutines.delay(15 * 60 * 1000L) // 15 minutes instead of 30 seconds
         if (networkMonitor.isConnected() && firebaseDataSource.isFirebaseInitialized) {
-          Log.d(TAG, "⏰ Periodic sync triggered (every 30s)")
-          syncAllPending()
+          val hasPending = runCatching {
+            dailyEodDao.getEodsBySyncStatus(SyncStatus.PENDING.name).isNotEmpty() ||
+            dailyEodDao.getEodsBySyncStatus(SyncStatus.FAILED.name).isNotEmpty()
+          }.getOrDefault(false)
+
+          if (hasPending) {
+            Log.d(TAG, "⏰ Periodic sync triggered for pending items")
+            syncAllPending()
+          }
         }
       }
     }

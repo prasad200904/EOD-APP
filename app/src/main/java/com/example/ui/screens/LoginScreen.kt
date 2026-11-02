@@ -1,6 +1,6 @@
 package com.example.ui.screens
 
-import android.widget.Toast
+
 import com.example.ui.theme.WarmCream
 import com.example.ui.theme.CoralPrimary
 import com.example.ui.theme.DarkSlateDeep
@@ -48,6 +48,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -64,7 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
+
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -106,7 +107,6 @@ fun LoginScreen(
   viewModel: WorkCoreViewModel,
   onLoginSuccess: () -> Unit
 ) {
-  val context = LocalContext.current
   val isAuthenticating by viewModel.isAuthenticating.collectAsState()
 
   var selectedRole by remember { mutableStateOf(Role.EMPLOYEE) }
@@ -116,8 +116,10 @@ fun LoginScreen(
   // Inputs
   var employeeId by remember { mutableStateOf("GT-001") }
   var employeePassword by remember { mutableStateOf("") }
+  var showDepartmentPasswordDialog by remember { mutableStateOf(false) }
+  var departmentPasswordError by remember { mutableStateOf<String?>(null) }
 
-  var adminUsername by remember { mutableStateOf("admin") }
+  var adminUsername by remember { mutableStateOf("") }
   var adminPassword by remember { mutableStateOf("") }
 
   var passwordVisible by remember { mutableStateOf(false) }
@@ -125,6 +127,7 @@ fun LoginScreen(
   var showResetPasswordDialog by remember { mutableStateOf(false) }
   var resetEmail by remember { mutableStateOf("") }
   var resetMessage by remember { mutableStateOf<String?>(null) }
+  var resetRequestSucceeded by remember { mutableStateOf<Boolean?>(null) }
 
   val departmentCards = remember {
     listOf(
@@ -150,9 +153,9 @@ fun LoginScreen(
         }
       }
       Role.MANAGER, Role.EMPLOYEE -> {
-        viewModel.loginDepartment(selectedDepartment, employeePassword) { success, err ->
-          if (success) onLoginSuccess() else errorMessage = err
-        }
+        employeePassword = ""
+        departmentPasswordError = null
+        showDepartmentPasswordDialog = true
       }
     }
   }
@@ -219,6 +222,8 @@ fun LoginScreen(
                   } else {
                     showAOScreen = false
                     selectedRole = role
+                    employeePassword = ""
+                    departmentPasswordError = null
                   }
                   errorMessage = null
                 }
@@ -301,6 +306,8 @@ fun LoginScreen(
               modifier = Modifier.weight(1f),
               onClick = {
                 selectedDepartment = departmentCards[0].name
+                employeePassword = ""
+                departmentPasswordError = null
                 if (selectedRole == Role.EMPLOYEE) employeeId = departmentCards[0].defaultEmployeeId
               }
             )
@@ -310,6 +317,8 @@ fun LoginScreen(
               modifier = Modifier.weight(1f),
               onClick = {
                 selectedDepartment = departmentCards[1].name
+                employeePassword = ""
+                departmentPasswordError = null
                 if (selectedRole == Role.EMPLOYEE) employeeId = departmentCards[1].defaultEmployeeId
               }
             )
@@ -326,6 +335,8 @@ fun LoginScreen(
               modifier = Modifier.weight(1f),
               onClick = {
                 selectedDepartment = departmentCards[2].name
+                employeePassword = ""
+                departmentPasswordError = null
                 if (selectedRole == Role.EMPLOYEE) employeeId = departmentCards[2].defaultEmployeeId
               }
             )
@@ -335,6 +346,8 @@ fun LoginScreen(
               modifier = Modifier.weight(1f),
               onClick = {
                 selectedDepartment = departmentCards[3].name
+                employeePassword = ""
+                departmentPasswordError = null
                 if (selectedRole == Role.EMPLOYEE) employeeId = departmentCards[3].defaultEmployeeId
               }
             )
@@ -347,6 +360,8 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
               selectedDepartment = departmentCards[4].name
+              employeePassword = ""
+              departmentPasswordError = null
               if (selectedRole == Role.EMPLOYEE) employeeId = departmentCards[4].defaultEmployeeId
             }
           )
@@ -362,60 +377,17 @@ fun LoginScreen(
       ) {
         when (selectedRole) {
           Role.MANAGER, Role.EMPLOYEE -> {
-            // Department Passcode field (one login per department)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-              Text(
-                text = "Department Passcode",
-                fontSize = 13.sp,
-                color = com.example.ui.theme.DarkSlateDeep
-              )
-              OutlinedTextField(
-                value = employeePassword,
-                onValueChange = {
-                  employeePassword = it
-                  errorMessage = null
-                },
-                leadingIcon = {
-                  Icon(Icons.Default.Lock, contentDescription = null, tint = com.example.ui.theme.SubtleText)
-                },
-                trailingIcon = {
-                  IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                      if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                      contentDescription = "Toggle password visibility",
-                      tint = com.example.ui.theme.SubtleText
-                    )
-                  }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { performLogin() }),
-                singleLine = true,
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .testTag("department_password_input"),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                  focusedContainerColor = Color.White,
-                  unfocusedContainerColor = Color.White.copy(alpha = 0.9f),
-                  focusedBorderColor = com.example.ui.theme.CoralPrimary,
-                  unfocusedBorderColor = Color(0xFFD1D5DB),
-                  focusedTextColor = com.example.ui.theme.DarkSlateDeep,
-                  unfocusedTextColor = com.example.ui.theme.DarkSlateDeep
-                )
-              )
-              Text(
-                text = "One login per department · Dashboard opens as roster",
-                fontSize = 11.sp,
-                color = com.example.ui.theme.SubtleText
-              )
-            }
+            Text(
+              text = "Your department password will be requested when you sign in.",
+              fontSize = 12.sp,
+              color = com.example.ui.theme.SubtleText
+            )
           }
 
           Role.ADMIN -> {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
               Text(
-                text = "Admin Username",
+                text = "Admin Email",
                 fontSize = 13.sp,
                 color = com.example.ui.theme.DarkSlateDeep
               )
@@ -425,7 +397,7 @@ fun LoginScreen(
                   adminUsername = it
                   errorMessage = null
                 },
-                placeholder = { Text("admin", color = com.example.ui.theme.SubtleText, fontSize = 13.sp) },
+                placeholder = { Text("name@company.com", color = com.example.ui.theme.SubtleText, fontSize = 13.sp) },
                 leadingIcon = {
                   Icon(Icons.Default.Person, contentDescription = null, tint = com.example.ui.theme.SubtleText)
                 },
@@ -501,7 +473,10 @@ fun LoginScreen(
             color = com.example.ui.theme.WarmBlue,
             modifier = Modifier
               .clickable {
-                Toast.makeText(context, "Default demo password is 'password123' (or 'admin123')", Toast.LENGTH_LONG).show()
+                resetEmail = adminUsername.takeIf { it.contains("@") }.orEmpty()
+                resetMessage = null
+                resetRequestSucceeded = null
+                showResetPasswordDialog = true
               }
               .padding(vertical = 4.dp)
           )
@@ -573,22 +548,86 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // "Forgot password / Set password" button
-        TextButton(
-          onClick = {
-            resetEmail = if (adminUsername.contains("@")) adminUsername else ""
-            resetMessage = null
-            showResetPasswordDialog = true
+
+      }
+
+      if (showDepartmentPasswordDialog) {
+        AlertDialog(
+          onDismissRequest = {
+            showDepartmentPasswordDialog = false
+            employeePassword = ""
+            departmentPasswordError = null
           },
-          modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-          Text(
-            text = "Forgot password / Set password",
-            fontSize = 13.sp,
-            color = com.example.ui.theme.CoralPrimary,
-            fontWeight = FontWeight.Medium
-          )
-        }
+          title = { Text("Sign in to $selectedDepartment") },
+          text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+              Text("Enter the password for this department roster.")
+              OutlinedTextField(
+                value = employeePassword,
+                onValueChange = {
+                  employeePassword = it
+                  departmentPasswordError = null
+                },
+                label = { Text("Department password") },
+                singleLine = true,
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                  if (employeePassword.isBlank()) {
+                    departmentPasswordError = "Enter the department password."
+                  } else {
+                    viewModel.loginDepartment(selectedDepartment, employeePassword.trim()) { success, err ->
+                      if (success) {
+                        showDepartmentPasswordDialog = false
+                        employeePassword = ""
+                        onLoginSuccess()
+                      } else {
+                        departmentPasswordError = err ?: "Incorrect department password."
+                        employeePassword = ""
+                      }
+                    }
+                  }
+                }),
+                isError = departmentPasswordError != null,
+                modifier = Modifier.fillMaxWidth().testTag("department_password_input")
+              )
+              departmentPasswordError?.let { error ->
+                Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+              }
+            }
+          },
+          confirmButton = {
+            Button(
+              onClick = {
+                if (employeePassword.isBlank()) {
+                  departmentPasswordError = "Enter the department password."
+                } else {
+                  viewModel.loginDepartment(selectedDepartment, employeePassword.trim()) { success, err ->
+                    if (success) {
+                      showDepartmentPasswordDialog = false
+                      employeePassword = ""
+                      onLoginSuccess()
+                    } else {
+                      departmentPasswordError = err ?: "Incorrect department password."
+                      employeePassword = ""
+                    }
+                  }
+                }
+              }
+            ) {
+              Text("Sign in")
+            }
+          },
+          dismissButton = {
+            TextButton(onClick = {
+              showDepartmentPasswordDialog = false
+              employeePassword = ""
+              departmentPasswordError = null
+            }) {
+              Text("Cancel")
+            }
+          }
+        )
       }
 
       if (showResetPasswordDialog) {
@@ -622,7 +661,7 @@ fun LoginScreen(
                 Text(
                   text = resetMessage ?: "",
                   fontSize = 12.sp,
-                  color = Color(0xFF1D6C2F),
+                  color = if (resetRequestSucceeded == false) Color(0xFFB42318) else Color(0xFF1D6C2F),
                   fontWeight = FontWeight.Medium
                 )
               }
@@ -633,8 +672,12 @@ fun LoginScreen(
               onClick = {
                 if (resetEmail.isNotBlank()) {
                   viewModel.sendPasswordReset(resetEmail.trim()) { success, msg ->
+                    resetRequestSucceeded = success
                     resetMessage = msg
                   }
+                } else {
+                  resetRequestSucceeded = false
+                  resetMessage = "Enter your registered email address."
                 }
               },
               colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.CoralPrimary),
@@ -651,131 +694,6 @@ fun LoginScreen(
         )
       }
 
-      Spacer(modifier = Modifier.height(28.dp))
-
-      // Quick 1-Tap Demo Switcher (Instant test testing)
-      Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF14151D),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF232532))
-      ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Text(
-            text = "Demo Accounts (1-Tap Fast Switch)",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF9CA3AF)
-          )
-
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-          ) {
-            // General Team
-            DemoChip(
-              label = "General Team",
-              sub = "5 members",
-              modifier = Modifier.weight(1f),
-              onClick = {
-                selectedRole = Role.EMPLOYEE
-                selectedDepartment = "General Team"
-                employeePassword = "general123"
-                errorMessage = null
-              }
-            )
-
-            // ML Team
-            DemoChip(
-              label = "ML Team",
-              sub = "5 members",
-              modifier = Modifier.weight(1f),
-              onClick = {
-                selectedRole = Role.EMPLOYEE
-                selectedDepartment = "ML Team"
-                employeePassword = "ml123"
-                errorMessage = null
-              }
-            )
-
-            // DB Team
-            DemoChip(
-              label = "DB Team",
-              sub = "4 members",
-              modifier = Modifier.weight(1f),
-              onClick = {
-                selectedRole = Role.EMPLOYEE
-                selectedDepartment = "DB Team"
-                employeePassword = "db123"
-                errorMessage = null
-              }
-            )
-          }
-
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-          ) {
-            // Cyber Security
-            DemoChip(
-              label = "Cyber Security",
-              sub = "4 members",
-              modifier = Modifier.weight(1f),
-              onClick = {
-                selectedRole = Role.EMPLOYEE
-                selectedDepartment = "Cyber Security"
-                employeePassword = "cyber123"
-                errorMessage = null
-              }
-            )
-
-            // Writing Team
-            DemoChip(
-              label = "Writing Team",
-              sub = "4 members",
-              modifier = Modifier.weight(1f),
-              onClick = {
-                selectedRole = Role.EMPLOYEE
-                selectedDepartment = "Writing Team"
-                employeePassword = "writing123"
-                errorMessage = null
-              }
-            )
-
-            // TEGA Team
-            DemoChip(
-              label = "TEGA",
-              sub = "7 members",
-              modifier = Modifier.weight(1f),
-              onClick = {
-                selectedRole = Role.EMPLOYEE
-                selectedDepartment = "TEGA"
-                employeePassword = "tega123"
-                errorMessage = null
-              }
-            )
-          }
-
-          // Row 4: Admin
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-          ) {
-            // Admin
-            DemoChip(
-              label = "Admin",
-              sub = "admin123",
-              modifier = Modifier.weight(1f),
-              onClick = {
-                selectedRole = Role.ADMIN
-                adminUsername = "admin"
-                adminPassword = "admin123"
-                errorMessage = null
-              }
-            )
-          }
-        }
-      }
     }
     } // End of else block for showAOScreen
   }
@@ -830,34 +748,4 @@ private fun DepartmentPillCard(
   }
 }
 
-@Composable
-private fun DemoChip(
-  label: String,
-  sub: String,
-  modifier: Modifier = Modifier,
-  onClick: () -> Unit
-) {
-  Box(
-    modifier = modifier
-      .clip(RoundedCornerShape(8.dp))
-      .background(Color.White.copy(alpha = 0.9f))
-      .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(8.dp))
-      .clickable { onClick() }
-      .padding(vertical = 8.dp, horizontal = 4.dp),
-    contentAlignment = Alignment.Center
-  ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-      Text(
-        text = label,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = com.example.ui.theme.DarkSlateDeep
-      )
-      Text(
-        text = sub,
-        fontSize = 9.sp,
-        color = com.example.ui.theme.SubtleText
-      )
-    }
-  }
-}
+

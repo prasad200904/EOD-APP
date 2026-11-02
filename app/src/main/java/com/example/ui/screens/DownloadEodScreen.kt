@@ -1,6 +1,9 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.SubtleText
+import com.example.ui.theme.MintGreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -60,7 +63,7 @@ import com.example.data.DailyEodEntity
 import com.example.data.EmployeeEntity
 import com.example.data.Role
 import com.example.data.TeamEntity
-import com.example.ui.theme.EodDarkBackground
+import com.example.ui.theme.WarmCream
 import com.example.util.FileDownloadHelper
 
 data class ExportReportItem(
@@ -104,33 +107,45 @@ fun DownloadEodScreen(
   // Scope: "Whole team" or "One employee"
   var selectedScope by remember { mutableStateOf("Whole team") }
 
-  // Departments list
-  val availableDepartments = listOf("GT Team", "ML Team", "DB Team", "Writing Team", "Cyber Security")
-  var selectedDepartment by remember {
-    val matched = availableDepartments.find { it.contains(initialDepartment, ignoreCase = true) }
-    mutableStateOf(matched ?: "GT Team")
+  val isAdmin = currentRole == Role.ADMIN
+
+  // Departments list — admin sees all, non-admin locked to their own team
+  val availableDepartments = remember(isAdmin, teams, initialDepartment) {
+    if (isAdmin) {
+      // Build from actual teams list if available, fallback to hardcoded
+      teams.map { it.name }.ifEmpty {
+        listOf("General Team", "ML Team", "DB Team", "Writing Team", "Cyber Security",
+          "TEGA", "Marketing", "Counsellor", "Tele Caller", "Manager")
+      }
+    } else {
+      listOf(initialDepartment)
+    }
+  }
+
+  var selectedDepartment by remember(initialDepartment) {
+    mutableStateOf(initialDepartment)
   }
   var showDepartmentDropdown by remember { mutableStateOf(false) }
 
   // Filter department employees
-  val deptCode = when {
-    selectedDepartment.contains("GT", ignoreCase = true) -> "GT"
-    selectedDepartment.contains("ML", ignoreCase = true) -> "ML"
-    selectedDepartment.contains("DB", ignoreCase = true) -> "DB"
-    selectedDepartment.contains("Writing", ignoreCase = true) -> "Writing"
-    selectedDepartment.contains("Cyber", ignoreCase = true) -> "Cyber"
-    else -> "GT"
-  }
 
-  val deptEmployees = remember(employees, deptCode) {
+  val deptEmployees = remember(employees, selectedDepartment) {
     employees.filter { emp ->
-      emp.role == Role.EMPLOYEE.name &&
-        (emp.department.equals(deptCode, ignoreCase = true) ||
-         emp.team.contains(deptCode, ignoreCase = true) ||
-         emp.departmentId.contains(deptCode, ignoreCase = true))
-    }.ifEmpty {
-      // Fallback if list empty
-      employees.take(5)
+      emp.role == Role.EMPLOYEE.name && (
+        emp.team.equals(selectedDepartment, ignoreCase = true) ||
+        emp.department.equals(selectedDepartment, ignoreCase = true) ||
+        // Code↔name fallbacks
+        (selectedDepartment.contains("General", ignoreCase = true) && emp.team.contains("General", ignoreCase = true)) ||
+        (selectedDepartment.contains("ML", ignoreCase = true) && emp.team.contains("ML", ignoreCase = true)) ||
+        (selectedDepartment.contains("DB", ignoreCase = true) && emp.team.contains("DB", ignoreCase = true)) ||
+        (selectedDepartment.contains("Cyber", ignoreCase = true) && emp.team.contains("Cyber", ignoreCase = true)) ||
+        (selectedDepartment.contains("Writing", ignoreCase = true) && emp.team.contains("Writing", ignoreCase = true)) ||
+        (selectedDepartment.contains("TEGA", ignoreCase = true) && emp.team.contains("TEGA", ignoreCase = true)) ||
+        (selectedDepartment.contains("Marketing", ignoreCase = true) && emp.team.contains("Marketing", ignoreCase = true)) ||
+        (selectedDepartment.contains("Counsel", ignoreCase = true) && emp.team.contains("Counsel", ignoreCase = true)) ||
+        (selectedDepartment.contains("Tele", ignoreCase = true) && emp.team.contains("Tele", ignoreCase = true)) ||
+        (selectedDepartment.contains("Manager", ignoreCase = true) && emp.team.contains("Manager", ignoreCase = true))
+      )
     }
   }
 
@@ -204,7 +219,7 @@ fun DownloadEodScreen(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(WarmCream)
   ) {
     LazyColumn(
       modifier = Modifier
@@ -223,7 +238,7 @@ fun DownloadEodScreen(
             text = "Reports",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = Color.Black,
             letterSpacing = (-0.5).sp
           )
 
@@ -236,7 +251,7 @@ fun DownloadEodScreen(
             Icon(
               imageVector = Icons.Default.ExitToApp,
               contentDescription = "Exit",
-              tint = Color(0xFF9CA3AF),
+              tint = Color.Black,
               modifier = Modifier.size(22.dp)
             )
           }
@@ -249,8 +264,8 @@ fun DownloadEodScreen(
           Text(
             text = "Scope",
             fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF9CA3AF)
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
           )
 
           Row(
@@ -263,10 +278,10 @@ fun DownloadEodScreen(
               modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(if (isWholeTeam) Color(0xFFEDE9FE) else Color(0xFF14151D))
+                .background(if (isWholeTeam) MintGreen else Color.White)
                 .border(
                   width = 1.dp,
-                  color = if (isWholeTeam) Color(0xFF818CF8) else Color(0xFF232532),
+                  color = if (isWholeTeam) CoralPrimary else Color(0xFFE8D5C4),
                   shape = RoundedCornerShape(12.dp)
                 )
                 .clickable { selectedScope = "Whole team" }
@@ -281,14 +296,14 @@ fun DownloadEodScreen(
                 Icon(
                   imageVector = Icons.Default.Group,
                   contentDescription = null,
-                  tint = if (isWholeTeam) Color(0xFF3730A3) else Color(0xFF9CA3AF),
+                  tint = if (isWholeTeam) Color.Black else Color(0xFF4B5563),
                   modifier = Modifier.size(18.dp)
                 )
                 Text(
                   text = "Whole team",
                   fontSize = 14.sp,
                   fontWeight = if (isWholeTeam) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isWholeTeam) Color(0xFF3730A3) else Color(0xFF9CA3AF)
+                  color = if (isWholeTeam) Color.Black else Color(0xFF4B5563)
                 )
               }
             }
@@ -299,10 +314,10 @@ fun DownloadEodScreen(
               modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(if (isOneEmployee) Color(0xFFEDE9FE) else Color(0xFF14151D))
+                .background(if (isOneEmployee) MintGreen else Color.White)
                 .border(
                   width = 1.dp,
-                  color = if (isOneEmployee) Color(0xFF818CF8) else Color(0xFF232532),
+                  color = if (isOneEmployee) CoralPrimary else Color(0xFFE8D5C4),
                   shape = RoundedCornerShape(12.dp)
                 )
                 .clickable { selectedScope = "One employee" }
@@ -317,14 +332,14 @@ fun DownloadEodScreen(
                 Icon(
                   imageVector = Icons.Default.PersonOutline,
                   contentDescription = null,
-                  tint = if (isOneEmployee) Color(0xFF3730A3) else Color(0xFF9CA3AF),
+                  tint = if (isOneEmployee) Color.Black else Color(0xFF4B5563),
                   modifier = Modifier.size(18.dp)
                 )
                 Text(
                   text = "One employee",
                   fontSize = 14.sp,
                   fontWeight = if (isOneEmployee) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isOneEmployee) Color(0xFF3730A3) else Color(0xFF9CA3AF)
+                  color = if (isOneEmployee) Color.Black else Color(0xFF4B5563)
                 )
               }
             }
@@ -344,10 +359,10 @@ fun DownloadEodScreen(
                 Box(
                   modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isSelected) Color(0xFF3730A3) else Color(0xFF14151D))
+                    .background(if (isSelected) CoralPrimary else Color.White)
                     .border(
                       width = 1.dp,
-                      color = if (isSelected) Color(0xFF818CF8) else Color(0xFF232532),
+                      color = if (isSelected) CoralPrimary else Color(0xFFE8D5C4),
                       shape = RoundedCornerShape(20.dp)
                     )
                     .clickable { selectedEmployeeId = emp.employeeId }
@@ -359,7 +374,7 @@ fun DownloadEodScreen(
                     text = emp.name,
                     fontSize = 12.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isSelected) Color.White else Color(0xFF9CA3AF)
+                    color = if (isSelected) Color.White else Color.Black
                   )
                 }
               }
@@ -368,25 +383,99 @@ fun DownloadEodScreen(
         }
       }
 
-      // 3. Department Section
+      // 3. Department Section — admin can switch, non-admin sees their team locked
       item {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text(
             text = "Department",
             fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF9CA3AF)
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
           )
 
-          Box {
+          if (isAdmin) {
+            // Admin: dropdown to pick any team
+            Box {
+              Surface(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .clickable { showDepartmentDropdown = true }
+                  .testTag("department_selector_card"),
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8D5C4))
+              ) {
+                Row(
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                  ) {
+                    Icon(
+                      imageVector = Icons.Default.ShowChart,
+                      contentDescription = null,
+                      tint = CoralPrimary,
+                      modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                      text = selectedDepartment,
+                      fontSize = 15.sp,
+                      fontWeight = FontWeight.SemiBold,
+                      color = Color.Black
+                    )
+                  }
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                  ) {
+                    Text(
+                      text = "${deptEmployees.size} members",
+                      fontSize = 13.sp,
+                      color = Color.Black
+                    )
+                    Icon(
+                      imageVector = Icons.Default.KeyboardArrowDown,
+                      contentDescription = null,
+                      tint = Color.Black,
+                      modifier = Modifier.size(20.dp)
+                    )
+                  }
+                }
+              }
+              DropdownMenu(
+                expanded = showDepartmentDropdown,
+                onDismissRequest = { showDepartmentDropdown = false },
+                modifier = Modifier.background(Color.White)
+              ) {
+                availableDepartments.forEach { dept ->
+                  DropdownMenuItem(
+                    text = {
+                      Text(
+                        text = dept,
+                        color = if (dept == selectedDepartment) CoralPrimary else Color.Black,
+                        fontWeight = if (dept == selectedDepartment) FontWeight.Bold else FontWeight.Normal
+                      )
+                    },
+                    onClick = {
+                      selectedDepartment = dept
+                      showDepartmentDropdown = false
+                    }
+                  )
+                }
+              }
+            }
+          } else {
+            // Non-admin: locked to their own team, no dropdown
             Surface(
-              modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showDepartmentDropdown = true }
-                .testTag("department_selector_card"),
-              color = Color(0xFF14151D),
+              modifier = Modifier.fillMaxWidth(),
+              color = Color.White,
               shape = RoundedCornerShape(12.dp),
-              border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF232532))
+              border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8D5C4))
             ) {
               Row(
                 modifier = Modifier
@@ -402,54 +491,20 @@ fun DownloadEodScreen(
                   Icon(
                     imageVector = Icons.Default.ShowChart,
                     contentDescription = null,
-                    tint = Color(0xFF818CF8),
+                    tint = CoralPrimary,
                     modifier = Modifier.size(20.dp)
                   )
                   Text(
                     text = selectedDepartment,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = Color.Black
                   )
                 }
-
-                Row(
-                  verticalAlignment = Alignment.CenterVertically,
-                  horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                  Text(
-                    text = "${deptEmployees.size} members",
-                    fontSize = 13.sp,
-                    color = Color(0xFF9CA3AF)
-                  )
-                  Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = Color(0xFF9CA3AF),
-                    modifier = Modifier.size(20.dp)
-                  )
-                }
-              }
-            }
-
-            DropdownMenu(
-              expanded = showDepartmentDropdown,
-              onDismissRequest = { showDepartmentDropdown = false },
-              modifier = Modifier.background(Color(0xFF191A24))
-            ) {
-              availableDepartments.forEach { dept ->
-                DropdownMenuItem(
-                  text = {
-                    Text(
-                      text = dept,
-                      color = if (dept == selectedDepartment) Color(0xFF818CF8) else Color.White,
-                      fontWeight = if (dept == selectedDepartment) FontWeight.Bold else FontWeight.Normal
-                    )
-                  },
-                  onClick = {
-                    selectedDepartment = dept
-                    showDepartmentDropdown = false
-                  }
+                Text(
+                  text = "${deptEmployees.size} members",
+                  fontSize = 13.sp,
+                  color = Color.Black
                 )
               }
             }
@@ -463,8 +518,8 @@ fun DownloadEodScreen(
           Text(
             text = "Range",
             fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF9CA3AF)
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
           )
 
           // 3 pill options: Today | 7 days | [This month] | Custom
@@ -478,10 +533,10 @@ fun DownloadEodScreen(
                 modifier = Modifier
                   .weight(1f)
                   .clip(RoundedCornerShape(12.dp))
-                  .background(if (isSelected) Color(0xFFEDE9FE) else Color(0xFF14151D))
+                  .background(if (isSelected) MintGreen else Color.White)
                   .border(
                     width = 1.dp,
-                    color = if (isSelected) Color(0xFF818CF8) else Color(0xFF232532),
+                    color = if (isSelected) CoralPrimary else Color(0xFFE8D5C4),
                     shape = RoundedCornerShape(12.dp)
                   )
                   .clickable { selectedRange = rangeOpt }
@@ -493,7 +548,7 @@ fun DownloadEodScreen(
                   text = rangeOpt,
                   fontSize = 13.sp,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isSelected) Color(0xFF3730A3) else Color(0xFF9CA3AF)
+                  color = if (isSelected) Color.Black else Color(0xFF4B5563)
                 )
               }
             }
@@ -502,9 +557,9 @@ fun DownloadEodScreen(
           // Date banner card: [Calendar] 1 Sep — 16 Sep 2026 | 54 records
           Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF14151D),
+            color = Color.White,
             shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF232532))
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8D5C4))
           ) {
             Row(
               modifier = Modifier
@@ -520,21 +575,21 @@ fun DownloadEodScreen(
                 Icon(
                   imageVector = Icons.Default.CalendarMonth,
                   contentDescription = null,
-                  tint = Color(0xFF9CA3AF),
+                  tint = Color.Black,
                   modifier = Modifier.size(18.dp)
                 )
                 Text(
                   text = dateBannerText,
                   fontSize = 14.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = Color.White
+                  color = Color.Black
                 )
               }
 
               Text(
                 text = "$calculatedRecordCount records",
                 fontSize = 13.sp,
-                color = Color(0xFF9CA3AF)
+                color = Color.Black
               )
             }
           }
@@ -547,8 +602,8 @@ fun DownloadEodScreen(
           Text(
             text = "Format",
             fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF9CA3AF)
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
           )
 
           Row(
@@ -561,10 +616,10 @@ fun DownloadEodScreen(
               modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF14151D))
+                .background(Color.White)
                 .border(
                   width = if (isExcel) 2.dp else 1.dp,
-                  color = if (isExcel) Color(0xFF2563EB) else Color(0xFF232532),
+                  color = if (isExcel) CoralPrimary else Color(0xFFE8D5C4),
                   shape = RoundedCornerShape(12.dp)
                 )
                 .clickable { selectedFormat = "Excel" }
@@ -579,14 +634,14 @@ fun DownloadEodScreen(
                 Icon(
                   imageVector = Icons.Default.Description,
                   contentDescription = null,
-                  tint = if (isExcel) Color(0xFF60A5FA) else Color(0xFF9CA3AF),
+                  tint = if (isExcel) CoralPrimary else Color(0xFF4B5563),
                   modifier = Modifier.size(20.dp)
                 )
                 Text(
                   text = "Excel",
                   fontSize = 14.sp,
                   fontWeight = if (isExcel) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isExcel) Color.White else Color(0xFF9CA3AF)
+                  color = if (isExcel) Color.Black else Color(0xFF4B5563)
                 )
               }
             }
@@ -597,10 +652,10 @@ fun DownloadEodScreen(
               modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF14151D))
+                .background(Color.White)
                 .border(
                   width = if (isCsv) 2.dp else 1.dp,
-                  color = if (isCsv) Color(0xFF2563EB) else Color(0xFF232532),
+                  color = if (isCsv) CoralPrimary else Color(0xFFE8D5C4),
                   shape = RoundedCornerShape(12.dp)
                 )
                 .clickable { selectedFormat = "CSV" }
@@ -615,14 +670,14 @@ fun DownloadEodScreen(
                 Icon(
                   imageVector = Icons.Default.Description,
                   contentDescription = null,
-                  tint = if (isCsv) Color(0xFF60A5FA) else Color(0xFF9CA3AF),
+                  tint = if (isCsv) CoralPrimary else Color(0xFF4B5563),
                   modifier = Modifier.size(20.dp)
                 )
                 Text(
                   text = "CSV",
                   fontSize = 14.sp,
                   fontWeight = if (isCsv) FontWeight.Bold else FontWeight.Medium,
-                  color = if (isCsv) Color.White else Color(0xFF9CA3AF)
+                  color = if (isCsv) Color.Black else Color(0xFF4B5563)
                 )
               }
             }
@@ -751,7 +806,7 @@ $rows  </Table>
             .height(52.dp)
             .testTag("btn_generate_report"),
           shape = RoundedCornerShape(14.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B5CE5))
+          colors = ButtonDefaults.buttonColors(containerColor = CoralPrimary)
         ) {
           Text(
             text = "Generate report — $targetName",
@@ -768,8 +823,8 @@ $rows  </Table>
           Text(
             text = "Recent exports",
             fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF9CA3AF)
+            fontWeight = FontWeight.SemiBold,
+            color = Color.Black
           )
 
           Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -778,9 +833,9 @@ $rows  </Table>
                 modifier = Modifier
                   .fillMaxWidth()
                   .testTag("recent_export_${item.id}"),
-                color = Color(0xFF14151D),
+                color = Color.White,
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF232532))
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE8D5C4))
               ) {
                 Row(
                   modifier = Modifier
@@ -803,7 +858,7 @@ $rows  </Table>
                       Icon(
                         imageVector = Icons.Default.Description,
                         contentDescription = null,
-                        tint = Color(0xFF9CA3AF),
+                        tint = Color.White,
                         modifier = Modifier.size(20.dp)
                       )
                     }
@@ -813,12 +868,12 @@ $rows  </Table>
                         text = item.title,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = Color.Black
                       )
                       Text(
                         text = item.subtitle,
                         fontSize = 13.sp,
-                        color = Color(0xFF9CA3AF)
+                        color = Color.Black
                       )
                     }
                   }

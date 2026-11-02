@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -116,7 +117,7 @@ fun WorkMonitorScreen(
           text = "Employee Work Monitor",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = Color(0xFF21005D)
+          color = DarkSlateDeep
         )
         Text(
           text = "Who is working on what today (${filteredItems.size} showing)",
@@ -173,7 +174,7 @@ fun WorkMonitorScreen(
           },
           colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = Color(0xFFEADDFF),
-            selectedLabelColor = Color(0xFF21005D),
+            selectedLabelColor = DarkSlateDeep,
             containerColor = Color.White
           ),
           border = FilterChipDefaults.filterChipBorder(

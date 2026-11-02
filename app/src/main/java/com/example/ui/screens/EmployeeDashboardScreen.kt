@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -218,7 +219,7 @@ fun EmployeeDashboardScreen(
         modifier = Modifier
           .fillMaxWidth()
           .clip(RoundedCornerShape(20.dp)),
-        color = Color(0xFF21005D)
+        color = DarkSlateDeep
       ) {
         Column(
           modifier = Modifier
@@ -258,7 +259,7 @@ fun EmployeeDashboardScreen(
             ) {
               Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = if (myTodayEod != null) Color(0xFF1B5E20) else Color(0xFFB3261E)
+                color = if (myTodayEod != null) Color(0xFF10B981) else Color(0xFFB3261E)
               ) {
                 Text(
                   text = if (myTodayEod != null) "TODAY SUBMITTED" else "EOD PENDING",
@@ -275,7 +276,7 @@ fun EmployeeDashboardScreen(
                   shape = RoundedCornerShape(8.dp),
                   colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor = Color(0xFF21005D)
+                    contentColor = DarkSlateDeep
                   ),
                   contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                   modifier = Modifier.testTag("employee_header_eod_btn")
@@ -329,7 +330,7 @@ fun EmployeeDashboardScreen(
             value = "$eodPendingCount",
             subtitle = if (eodPendingCount == 0) "Today complete" else "Action required",
             backgroundColor = if (eodPendingCount == 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-            valueColor = if (eodPendingCount == 0) Color(0xFF1B5E20) else Color(0xFFB71C1C),
+            valueColor = if (eodPendingCount == 0) Color(0xFF10B981) else Color(0xFFB71C1C),
             icon = if (eodPendingCount == 0) Icons.Default.CheckCircle else Icons.Default.PendingActions,
             modifier = Modifier.weight(1f).testTag("stat_tile_eod_pending")
           )
@@ -338,7 +339,7 @@ fun EmployeeDashboardScreen(
             value = "$completedCount",
             subtitle = "${myEods.size} total entries",
             backgroundColor = Color(0xFFF3E7FF),
-            valueColor = Color(0xFF21005D),
+            valueColor = DarkSlateDeep,
             icon = Icons.Default.TaskAlt,
             modifier = Modifier.weight(1f).testTag("stat_tile_tasks_completed")
           )
@@ -362,7 +363,7 @@ fun EmployeeDashboardScreen(
             value = "$activeProjectsCount",
             subtitle = "${assignedTeam?.name ?: "Team"} scope",
             backgroundColor = Color(0xFFF3E7FF),
-            valueColor = Color(0xFF21005D),
+            valueColor = DarkSlateDeep,
             icon = Icons.Default.Lightbulb,
             modifier = Modifier.weight(1f).testTag("stat_tile_active_projects")
           )
@@ -398,7 +399,7 @@ fun EmployeeDashboardScreen(
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
-                color = Color(0xFF21005D),
+                color = DarkSlateDeep,
                 letterSpacing = 0.5.sp
               )
               Text(
@@ -422,7 +423,7 @@ fun EmployeeDashboardScreen(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF21005D),
+                    color = DarkSlateDeep,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                   )
                 }
@@ -632,7 +633,7 @@ fun EmployeeDashboardScreen(
                   label = { Text("${preset}h", fontSize = 11.sp, fontFamily = FontFamily.Monospace) },
                   colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = WorkPrimaryContainer,
-                    selectedLabelColor = Color(0xFF21005D)
+                    selectedLabelColor = DarkSlateDeep
                   )
                 )
               }
@@ -724,7 +725,7 @@ fun EmployeeDashboardScreen(
                 label = "In Progress",
                 isSelected = formStatus == "In Progress",
                 activeBg = Color(0xFFEADDFF),
-                activeText = Color(0xFF21005D),
+                activeText = DarkSlateDeep,
                 activeBorder = WorkPrimary,
                 icon = Icons.Default.Sync,
                 onClick = { formStatus = "In Progress" },
@@ -838,7 +839,7 @@ fun EmployeeDashboardScreen(
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
-                color = Color(0xFF21005D),
+                color = DarkSlateDeep,
                 letterSpacing = 0.5.sp
               )
               Text(
@@ -907,7 +908,7 @@ fun EmployeeDashboardScreen(
                       fontFamily = FontFamily.Monospace,
                       fontWeight = FontWeight.Bold,
                       fontSize = 13.sp,
-                      color = Color(0xFF21005D),
+                      color = DarkSlateDeep,
                       maxLines = 1,
                       overflow = TextOverflow.Ellipsis,
                       modifier = Modifier.weight(1f)
@@ -988,7 +989,7 @@ fun EmployeeDashboardScreen(
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                color = Color(0xFF21005D),
+                color = DarkSlateDeep,
                 letterSpacing = 0.5.sp
               )
             }
@@ -1139,7 +1140,7 @@ fun EmployeeDashboardScreen(
               }
             },
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF21005D)),
+            colors = ButtonDefaults.buttonColors(containerColor = DarkSlateDeep),
             modifier = Modifier
               .fillMaxWidth()
               .height(48.dp)
@@ -1337,7 +1338,7 @@ private fun EodHistoryRecordCard(
 ) {
   val (statusBg, statusText) = when (record.workStatus) {
     "Completed" -> StatusSuccessBg to StatusSuccessText
-    "In Progress" -> WorkPrimaryContainer to Color(0xFF21005D)
+    "In Progress" -> WorkPrimaryContainer to DarkSlateDeep
     "Blocked" -> StatusErrorBg to StatusErrorText
     else -> Color(0xFFE8DEF8) to Color(0xFF1D192B)
   }
@@ -1371,7 +1372,7 @@ private fun EodHistoryRecordCard(
             fontFamily = FontFamily.Monospace,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1D1B20)
+            color = DarkSlateDeep
           )
         }
 
@@ -1460,7 +1461,7 @@ private fun EodHistoryRecordCard(
           fontFamily = FontFamily.Monospace,
           fontWeight = FontWeight.Bold,
           fontSize = 12.sp,
-          color = Color(0xFF21005D)
+          color = DarkSlateDeep
         )
 
         Text(

@@ -114,6 +114,20 @@ class LoginFlowTest {
     }
 
     @Test
+    fun `admin login requires the registered email instead of admin alias`() = runBlocking {
+        val result = repository.authenticate(
+            role = Role.ADMIN,
+            teamName = null,
+            identifier = "admin",
+            passwordInput = "validPassword123"
+        )
+        assertTrue("Admin username alias should be rejected", result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message.orEmpty().contains("registered admin email")
+        )
+    }
+
+    @Test
     fun `admin login with wrong password fails`() = runBlocking {
         val result = repository.authenticate(
             role = Role.ADMIN,

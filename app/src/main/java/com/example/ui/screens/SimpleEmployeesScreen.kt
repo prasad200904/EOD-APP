@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.DarkSlateDeep
+import com.example.ui.theme.SubtleText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -135,7 +137,7 @@ fun SimpleEmployeesScreen(
         modifier = Modifier
           .fillMaxWidth()
           .clip(RoundedCornerShape(20.dp)),
-        color = Color(0xFF21005D)
+        color = DarkSlateDeep
       ) {
         Column(
           modifier = Modifier
@@ -308,7 +310,7 @@ fun SimpleEmployeesScreen(
                   text = emp.name,
                   fontWeight = FontWeight.Bold,
                   fontSize = 15.sp,
-                  color = Color(0xFF1D1B20)
+                  color = DarkSlateDeep
                 )
                 Text(
                   text = "${emp.employeeId} • ${emp.designation}",
@@ -343,7 +345,7 @@ fun SimpleEmployeesScreen(
                   }
                   Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFF9CA3AF),
+                    color = SubtleText,
                     modifier = Modifier.clickable { showDeleteConfirm = false }
                   ) {
                     Text(
@@ -389,7 +391,7 @@ fun SimpleEmployeesScreen(
               Text(
                 text = "${emp.team} (${emp.department})",
                 fontSize = 12.sp,
-                color = Color(0xFF21005D),
+                color = DarkSlateDeep,
                 fontWeight = FontWeight.SemiBold
               )
             }
@@ -464,7 +466,7 @@ fun SimpleEmployeesScreen(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
               UserAvatar(name = emp.name, size = 44, backgroundColor = WorkPrimary)
               Column {
-                Text(emp.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1D1B20))
+                Text(emp.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = DarkSlateDeep)
                 Text("${emp.employeeId} • ${emp.designation}", fontSize = 12.sp, color = Color(0xFF49454F))
               }
             }
@@ -478,9 +480,9 @@ fun SimpleEmployeesScreen(
 
           // Details List
           Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Department: ${emp.department} • Team: ${emp.team}", fontSize = 12.sp, color = Color(0xFF1D1B20))
+            Text("Department: ${emp.department} • Team: ${emp.team}", fontSize = 12.sp, color = DarkSlateDeep)
             Text("Email: ${emp.email} • Phone: ${emp.phone}", fontSize = 12.sp, color = Color(0xFF49454F))
-            Text("Default Project: ${emp.defaultProject}", fontSize = 12.sp, color = Color(0xFF21005D), fontWeight = FontWeight.SemiBold)
+            Text("Default Project: ${emp.defaultProject}", fontSize = 12.sp, color = DarkSlateDeep, fontWeight = FontWeight.SemiBold)
           }
 
           HorizontalDivider(color = WorkOutlineVariant)
@@ -517,11 +519,11 @@ fun SimpleEmployeesScreen(
                       horizontalArrangement = Arrangement.SpaceBetween,
                       verticalAlignment = Alignment.CenterVertically
                     ) {
-                      Text(e.date, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFF21005D))
+                      Text(e.date, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.sp, color = DarkSlateDeep)
                       Text("${e.workStatus}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF10B981))
                     }
                     Text("Project: ${e.project}", fontSize = 11.sp, color = Color(0xFF49454F), fontWeight = FontWeight.Medium)
-                    Text(e.todayWork, fontSize = 11.sp, color = Color(0xFF1D1B20))
+                    Text(e.todayWork, fontSize = 11.sp, color = DarkSlateDeep)
                   }
                 }
               }
@@ -546,7 +548,7 @@ fun SimpleEmployeesScreen(
               },
               shape = RoundedCornerShape(10.dp),
               colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = if (emp.isActive) Color(0xFFB71C1C) else Color(0xFF1B5E20)
+                contentColor = if (emp.isActive) Color(0xFFB71C1C) else Color(0xFF10B981)
               ),
               modifier = Modifier.fillMaxWidth()
             ) {
