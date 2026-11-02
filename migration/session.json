@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataModelVersion": 1,
+  "id": "fcf41db5-fa86-4336-b5ce-79738798f645",
+  "title": "Fix admin console + history page bugs",
+  "agentMode": "vibe",
+  "workspacePaths": [
+    "c:\\Users\\vundr\\OneDrive\\Desktop\\app\\workcore"
+  ],
+  "rootPaths": [
+    "c:\\Users\\vundr\\OneDrive\\Desktop\\app\\workcore"
+  ],
+  "createdAt": "2026-09-29T07:47:27.305Z",
+  "lastModifiedAt": "2026-10-23T06:35:08.637Z",
+  "modelId": "auto",
+  "autopilot": true,
+  "contextSnapshotModelDisplay": {
+    "modelId": "auto",
+    "display": "Auto (model selected dynamically on the server)"
+  },
+  "disableAutoCompaction": false,
+  "description": "Fixing 6 issues: General Team/Tele Caller filter bug, remove Pending first toggle, show submitted first, remove Filter by Employee from history, add Team→Employee flow, show real custom form data",
+  "status": "failed"
+}

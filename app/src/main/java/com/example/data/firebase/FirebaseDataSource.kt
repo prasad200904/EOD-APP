@@ -817,6 +817,22 @@ class FirebaseDataSource(private val context: Context) {
       Result.failure(e)
     }
   }
+
+  /**
+   * Check if employees have already been uploaded to Firestore (tracked in SharedPreferences)
+   */
+  fun areEmployeesUploadedToFirestore(): Boolean {
+    val prefs = context.getSharedPreferences("workcore_sync", android.content.Context.MODE_PRIVATE)
+    return prefs.getBoolean("employees_uploaded_to_firebase", false)
+  }
+
+  /**
+   * Mark employees as uploaded to Firestore (stored in SharedPreferences)
+   */
+  fun markEmployeesUploadedToFirestore(uploaded: Boolean) {
+    val prefs = context.getSharedPreferences("workcore_sync", android.content.Context.MODE_PRIVATE)
+    prefs.edit().putBoolean("employees_uploaded_to_firebase", uploaded).apply()
+  }
 }
 
 // Data class for EOD history query result with pagination support

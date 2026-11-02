@@ -1,0 +1,11 @@
+{
+  "task_id": "task-firebase-employee-sync-fix",
+  "task_description": "Fix Firebase employee data sync issue. Employees not appearing in UI after login due to security rule blocking admin reads and no data in Firestore collection.",
+  "status": "pending",
+  "feature_order": [
+    "FEAT-001",
+    "FEAT-002",
+    "FEAT-003"
+  ],
+  "blocked_reason": null
+}

@@ -1389,20 +1389,59 @@ class WorkCoreRepository(
     android.util.Log.d("WorkCoreRepository", "Firebase initialized: ${firebaseDataSource != null}")
     
     return@withContext try {
-      val result = firebaseDataSource?.fetchEmployees()
-      
-      if (result == null) {
+      // STEP 1: Check if Firebase is properly initialized
+      if (firebaseDataSource == null) {
         android.util.Log.w("WorkCoreRepository", "⚠️ Firebase not initialized, skipping sync")
         return@withContext Result.success(0)
       }
+      
+      // STEP 2: Check if current user is authenticated with Firebase
+      val currentUser = firebaseDataSource.currentUser
+      if (currentUser == null) {
+        android.util.Log.e("WorkCoreRepository", "❌ Firebase Auth not initialized. User not signed in.")
+        return@withContext Result.failure(IllegalStateException("User not authenticated with Firebase."))
+      }
+      
+      // STEP 3: Get count of local employees before sync (to detect first sync)
+      val localEmployeesBeforeSync = employeeDao.getAllEmployees().first()
+      val localCountBefore = localEmployeesBeforeSync.size
+      android.util.Log.d("WorkCoreRepository", "📊 Local database has $localCountBefore employees before sync")
+      
+      // STEP 4: Check if this is the first sync and we need to upload
+      val employeesUploaded = firebaseDataSource.areEmployeesUploadedToFirestore()
+      
+      if (!employeesUploaded && localCountBefore > 0) {
+        android.util.Log.i("WorkCoreRepository", "🔥 First sync detected: local DB has employees but Firebase upload not tracked. Uploading ${localEmployeesBeforeSync.size} employees to Firestore...")
+        val uploadResult = firebaseDataSource.uploadAllEmployeesToFirestore(localEmployeesBeforeSync)
+        uploadResult.fold(
+          onSuccess = { uploadCount ->
+            android.util.Log.i("WorkCoreRepository", "✅ Successfully uploaded $uploadCount employees to Firestore")
+            firebaseDataSource.markEmployeesUploadedToFirestore(true)
+          },
+          onFailure = { error ->
+            android.util.Log.w("WorkCoreRepository", "⚠️ Upload failed (will continue with fetch): ${error.message}")
+            // Continue anyway - try to fetch from Firestore
+          }
+        )
+      }
+      
+      // STEP 5: Fetch employees from Firebase
+      val result = firebaseDataSource.fetchEmployees()
       
       result.fold(
         onSuccess = { employees ->
           android.util.Log.d("WorkCoreRepository", "✅ Fetched ${employees.size} employees from Firebase")
           
           if (employees.isEmpty()) {
-            android.util.Log.w("WorkCoreRepository", "⚠️ No employees found in Firebase!")
-            return@withContext Result.success(0)
+            // IMPORTANT: Detect silent empty fetch (possible security rule issue)
+            if (localCountBefore > 0) {
+              android.util.Log.w("WorkCoreRepository", "⚠️ SYNC WARNING: Firestore returned 0 employees, but local DB has $localCountBefore employees. This suggests a security rule issue or network problem.")
+              return@withContext Result.failure(IllegalStateException("Employee sync returned zero. Security rules may be blocking the read or employees collection is empty. Check Firestore rules or retry."))
+            } else {
+              // First install, no data anywhere — this is OK
+              android.util.Log.i("WorkCoreRepository", "ℹ️ No employees in Firestore or local DB (first install is OK).")
+              return@withContext Result.success(0)
+            }
           }
           
           // Log first few employees for verification

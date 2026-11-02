@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-003",
+  "type": "test",
+  "description": "Cross-FEAT integration verification and fixes. After FEAT-001 and FEAT-002 are implemented, run full sync flow on real device/emulator, verify employee data appears in UI, test multiple login scenarios (admin, SS employees, AO employees), and confirm Firestore has correct data. Fix any integration issues found.",
+  "status": "pending",
+  "steps": [
+    "Build app with both FEAT-001 (rules) and FEAT-002 (code) changes",
+    "Uninstall app completely to ensure fresh database",
+    "Rebuild and install fresh: ./gradlew installDebug",
+    "Test Scenario 1 - Admin first login: Login as admin@workcore.com, verify logcat shows 'Fetched X employees' (X >= 73), verify UI shows AdminDashboardScreen with employee data",
+    "Test Scenario 2 - SS employee login: Login as SS001 (ML Team), verify sync fetches employees, verify roster shows ML Team members only",
+    "Test Scenario 3 - AO employee login: Login as AO001 (Marketing), verify sync fetches employees, verify roster shows Marketing Team members only",
+    "Verify Firestore data: Open Firebase Console > Firestore > employees collection, confirm 73+ documents with correct fields (name, email, team, teamId, companyId, role, isActive)",
+    "Verify no errors in Firestore console > Firestore > Rules > Rules Playground or security issues tab",
+    "Run Android tests if available: ./gradlew testDebugUnitTest (verify no sync logic breaks)",
+    "Spot check: Query Firestore for admin user, confirm role='ADMIN', query for SS001, confirm team='ML Team' and teamId='TEAM_ML'"
+  ],
+  "acceptance_criteria": [
+    "First fresh login uploads employees to Firestore and fetches them back (all 73+)",
+    "Admin dashboard displays employee list from synced data (not just seed data)",
+    "Employee team rosters filter correctly by team (SS001 sees only ML Team, AO001 sees only Marketing)",
+    "Firestore console shows correct employee documents with all required fields",
+    "No PERMISSION_DENIED or other security errors in Firestore logs during sync",
+    "Logs at each step match expected format (prefixed with emoji, clear descriptions)",
+    "Unit tests pass (if any existing tests cover sync flow)"
+  ],
+  "verification": [
+    "Run app on emulator or real device: ./gradlew installDebug && adb logcat | grep -E '(Fetched|Uploaded|sync)' (watch logs during login)",
+    "Verify AdminDashboardScreen displays employee count > 0 after sync completes",
+    "Navigate to Roster/Analytics screens, confirm team members displayed (not empty)",
+    "Open Firebase Console, search employees collection for 'SS001', verify document exists with correct fields",
+    "Run tests: ./gradlew testDebugUnitTest (no failures expected)",
+    "Test on multiple devices or emulator snapshots to verify sync works consistently",
+    "Logout and login again with different role (admin → employee), verify sync still works",
+    "If possible, test with network offline then online: app should queue sync and retry when network returns"
+  ],
+  "blocked_reason": null,
+  "findings": "FEAT-001 and FEAT-002 are code-complete but integration depends on both being deployed: FEAT-001 fixes rules, FEAT-002 implements upload + validation. This step verifies they work together and catches any mismatches in field names, logic, or assumptions."
+}
