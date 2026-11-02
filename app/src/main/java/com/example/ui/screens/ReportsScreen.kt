@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -169,7 +170,7 @@ fun ReportsScreen(
           text = "EOD History & Reports",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = Color(0xFF21005D)
+          color = DarkSlateDeep
         )
         Text(
           text = "${filteredEods.size} of ${eods.size} records matching active filters",
@@ -220,7 +221,7 @@ fun ReportsScreen(
               text = "DOWNLOAD & EXPORT REPORT",
               fontSize = 11.sp,
               fontWeight = FontWeight.Bold,
-              color = Color(0xFF21005D),
+              color = DarkSlateDeep,
               letterSpacing = 0.5.sp
             )
             Text(
@@ -277,7 +278,7 @@ fun ReportsScreen(
             }
           },
           shape = RoundedCornerShape(10.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF21005D)),
+          colors = ButtonDefaults.buttonColors(containerColor = DarkSlateDeep),
           modifier = Modifier
             .fillMaxWidth()
             .testTag("download_filtered_csv_btn")
@@ -305,7 +306,7 @@ fun ReportsScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Text("Format:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+            Text("Format:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
             listOf("EXCEL" to "Excel (.xlsx)", "CSV" to "CSV (.csv)").forEach { (fmt, label) ->
               FilterChip(
                 selected = selectedFormat == fmt,
@@ -313,7 +314,7 @@ fun ReportsScreen(
                 label = { Text(label, fontSize = 11.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                   selectedContainerColor = WorkPrimaryContainer,
-                  selectedLabelColor = Color(0xFF21005D)
+                  selectedLabelColor = DarkSlateDeep
                 )
               )
             }
@@ -325,7 +326,7 @@ fun ReportsScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Text("Scope:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+            Text("Scope:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
             listOf("COMPANY" to "Company", "TEAM" to "Team", "INDIVIDUAL" to "Staff").forEach { (sc, label) ->
               FilterChip(
                 selected = selectedScope == sc,
@@ -333,7 +334,7 @@ fun ReportsScreen(
                 label = { Text(label, fontSize = 11.sp) },
                 colors = FilterChipDefaults.filterChipColors(
                   selectedContainerColor = WorkPrimaryContainer,
-                  selectedLabelColor = Color(0xFF21005D)
+                  selectedLabelColor = DarkSlateDeep
                 )
               )
             }
@@ -346,7 +347,7 @@ fun ReportsScreen(
               horizontalArrangement = Arrangement.spacedBy(8.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Text("Select Team:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+              Text("Select Team:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
               Box {
                 OutlinedButton(
                   onClick = { teamExportMenuOpen = true },
@@ -375,7 +376,7 @@ fun ReportsScreen(
               horizontalArrangement = Arrangement.spacedBy(8.dp),
               verticalAlignment = Alignment.CenterVertically
             ) {
-              Text("Employee:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+              Text("Employee:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
               val targetEmp = employees.find { it.employeeId == selectedEmpId }
               Box {
                 OutlinedButton(
@@ -491,7 +492,7 @@ fun ReportsScreen(
               text = "FILTER EOD DATABASE",
               fontSize = 11.sp,
               fontWeight = FontWeight.Bold,
-              color = Color(0xFF21005D),
+              color = DarkSlateDeep,
               letterSpacing = 0.5.sp
             )
           }
@@ -583,7 +584,7 @@ fun ReportsScreen(
               Text(
                 text = if (selectedTeamFilter == "All") "Team: All" else selectedTeamFilter,
                 fontSize = 11.sp,
-                color = Color(0xFF1D1B20)
+                color = DarkSlateDeep
               )
               Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -605,7 +606,7 @@ fun ReportsScreen(
               Text(
                 text = if (selectedEmployeeFilter == "All") "Staff: All" else empName,
                 fontSize = 11.sp,
-                color = Color(0xFF1D1B20)
+                color = DarkSlateDeep
               )
               Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -629,7 +630,7 @@ fun ReportsScreen(
               Text(
                 text = if (selectedProjectFilter == "All") "Project: All" else selectedProjectFilter,
                 fontSize = 11.sp,
-                color = Color(0xFF1D1B20)
+                color = DarkSlateDeep
               )
               Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -682,7 +683,7 @@ fun ReportsScreen(
           label = { Text(status, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
           colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = Color(0xFFEADDFF),
-            selectedLabelColor = Color(0xFF21005D),
+            selectedLabelColor = DarkSlateDeep,
             containerColor = Color.White
           ),
           border = FilterChipDefaults.filterChipBorder(
@@ -730,7 +731,7 @@ fun ReportsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                   UserAvatar(name = eod.employeeName, size = 30)
                   Column {
-                    Text(eod.employeeName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D1B20))
+                    Text(eod.employeeName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
                     val teamName = empMap[eod.employeeId]?.team ?: "Engineering"
                     Text("${eod.date} · ${eod.submissionTime} · $teamName", fontSize = 11.sp, color = Color(0xFF79747E))
                   }
@@ -763,7 +764,7 @@ fun ReportsScreen(
               Text(
                 text = eod.todayWork,
                 fontSize = 12.sp,
-                color = Color(0xFF1D1B20),
+                color = DarkSlateDeep,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
               )

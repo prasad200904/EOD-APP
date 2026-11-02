@@ -1,0 +1,23 @@
+{
+  "project_type": "Android App (Kotlin + Jetpack Compose) with Firebase Firestore backend",
+  "language": "Kotlin",
+  "build_system": "Gradle (Android Gradle Plugin)",
+  "test_framework": "JUnit + Espresso (in app/src/test and app/src/androidTest)",
+  "build_command": "./gradlew assemble",
+  "test_command": "./gradlew testDebugUnitTest or ./gradlew connectedAndroidTest",
+  "verification_instructions": "Uninstall app completely, rebuild, install, login as admin, check logs for 'Fetched X employees' (X should be > 0), verify Firestore console shows employee documents",
+  "snapshot_or_generated_files": "SeedData.kt contains seed employee data (73 employees). Firestore rules are deployed to Firebase Console manually.",
+  "environment_constraints": "Firebase project must be configured in google-services.json. Firestore security rules require manual deployment to Firebase Console (not part of app build). App has no Cloud Functions, so token claims are never set by backend.",
+  "contribution_requirements": "Follow WorkCore's standard patterns: use Result<T> for error handling, log with android.util.Log + TAG prefix, use Dispatchers.IO for database/network ops, follow existing naming conventions in data layer.",
+  "key_patterns": "Data layer: FirebaseDataSource (Firestore ops) → WorkCoreRepository (business logic) → ViewModel. Error handling: Result<T>.fold() pattern. Logging: TAG + descriptive messages with emoji prefixes (✅, ❌, 📤, 📥, etc.).",
+  "relevant_files": [
+    "firestore.rules",
+    "app/src/main/java/com/example/data/firebase/FirebaseDataSource.kt",
+    "app/src/main/java/com/example/data/WorkCoreRepository.kt",
+    "app/src/main/java/com/example/data/SeedData.kt",
+    "app/src/main/java/com/example/data/Entities.kt",
+    "app/src/main/java/com/example/data/Daos.kt",
+    "app/src/main/java/com/example/ui/viewmodel/WorkCoreViewModel.kt"
+  ],
+  "directory_structure": "app/src/main/java/com/example/ contains: data/ (entities, DAO, repository, Firebase), ui/ (screens, ViewModel, theme), util/. Firebase config in app/google-services.json (not in repo). Firestore rules at repo root: firestore.rules."
+}

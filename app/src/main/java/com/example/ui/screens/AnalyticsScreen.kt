@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -57,6 +58,8 @@ import com.example.data.DailyEodEntity
 import com.example.data.EmployeeBehaviorMetrics
 import com.example.data.EmployeeEntity
 import com.example.data.TeamAnalyticsSummary
+import com.example.data.TeamReportSummary
+import com.example.data.CustomTeamMetrics
 import com.example.ui.components.IndicatorBadge
 import com.example.ui.components.MetricCard
 import com.example.ui.components.UserAvatar
@@ -71,12 +74,13 @@ import com.example.ui.theme.WorkSurface
 fun AnalyticsScreen(
   behaviorMetrics: List<EmployeeBehaviorMetrics>,
   teamSummaries: List<TeamAnalyticsSummary>,
+  teamReports: List<TeamReportSummary>,
   departmentFilter: String,
   onDepartmentFilterChange: (String) -> Unit,
   onSelectEmployee: (EmployeeEntity) -> Unit,
   modifier: Modifier = Modifier
 ) {
-  var selectedTab by remember { mutableIntStateOf(0) } // 0 = Employee Patterns & Insights, 1 = Team Performance
+  var selectedTab by remember { mutableIntStateOf(0) } // 0 = Employee Patterns, 1 = Team Performance, 2 = Team Reports
 
   val departments = listOf("All", "Engineering", "Design", "Quality Assurance", "Product")
 
@@ -93,7 +97,7 @@ fun AnalyticsScreen(
         text = "Work Activity & Performance Analytics",
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF21005D)
+        color = DarkSlateDeep
       )
       Text(
         text = "Objective project metrics and completion rates derived directly from daily EOD logs",
@@ -102,7 +106,7 @@ fun AnalyticsScreen(
       )
     }
 
-    // Analytics Sub-Tabs: Employee Behavior vs Team Performance
+    // Analytics Sub-Tabs: Employee Behavior vs Team Performance vs Team Reports
     TabRow(
       selectedTabIndex = selectedTab,
       containerColor = Color.White,
@@ -131,6 +135,16 @@ fun AnalyticsScreen(
           }
         }
       )
+      Tab(
+        selected = selectedTab == 2,
+        onClick = { selectedTab = 2 },
+        text = {
+          Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(Icons.Default.TrendingUp, contentDescription = null, modifier = Modifier.size(16.dp))
+            Text("Team Reports", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+          }
+        }
+      )
     }
 
     // Department Filter Row
@@ -148,7 +162,7 @@ fun AnalyticsScreen(
           label = { Text(dept, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
           colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = Color(0xFFEADDFF),
-            selectedLabelColor = Color(0xFF21005D),
+            selectedLabelColor = DarkSlateDeep,
             containerColor = Color.White
           ),
           border = FilterChipDefaults.filterChipBorder(
@@ -189,7 +203,7 @@ fun AnalyticsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                   UserAvatar(name = m.employee.name, size = 38)
                   Column {
-                    Text(m.employee.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D1B20))
+                    Text(m.employee.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
                     Text("${m.employee.designation} · ${m.employee.department}", fontSize = 11.sp, color = Color(0xFF49454F))
                   }
                 }
@@ -231,19 +245,19 @@ fun AnalyticsScreen(
               ) {
                 Column {
                   Text("Submission Rate", fontSize = 10.sp, color = Color(0xFF79747E))
-                  Text("${m.submissionRate}% (${m.submittedEods}/${m.totalExpectedEods})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                  Text("${m.submissionRate}% (${m.submittedEods}/${m.totalExpectedEods})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
                 }
                 Column {
                   Text("Daily Avg Hours", fontSize = 10.sp, color = Color(0xFF79747E))
-                  Text("${m.avgHours}h/day", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                  Text("${m.avgHours}h/day", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
                 }
                 Column {
                   Text("Avg Progress", fontSize = 10.sp, color = Color(0xFF79747E))
-                  Text("${m.avgProgress}% (${m.progressTrend})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                  Text("${m.avgProgress}% (${m.progressTrend})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
                 }
                 Column {
                   Text("Blocked Days", fontSize = 10.sp, color = Color(0xFF79747E))
-                  Text("${m.blockedDaysCount} days", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (m.blockedDaysCount >= 2) Color(0xFFB3261E) else Color(0xFF21005D))
+                  Text("${m.blockedDaysCount} days", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (m.blockedDaysCount >= 2) Color(0xFFB3261E) else DarkSlateDeep)
                 }
               }
 
@@ -295,7 +309,7 @@ fun AnalyticsScreen(
                     text = team.teamName,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF21005D)
+                    color = DarkSlateDeep
                   )
                   Text(
                     text = "${team.department} · ${team.totalMembers} Members",
@@ -314,7 +328,7 @@ fun AnalyticsScreen(
                     text = "${team.teamSubmissionRate}% Today",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF21005D)
+                    color = DarkSlateDeep
                   )
                 }
               }
@@ -329,7 +343,7 @@ fun AnalyticsScreen(
                   count = "${team.avgWorkingHours}h",
                   subtitle = "Per member average",
                   backgroundColor = Color(0xFFF3E7FF),
-                  textColor = Color(0xFF21005D),
+                  textColor = DarkSlateDeep,
                   borderColor = WorkOutlineVariant,
                   modifier = Modifier.weight(1f)
                 )
@@ -338,7 +352,7 @@ fun AnalyticsScreen(
                   count = "${team.avgProgress}%",
                   subtitle = "${team.completedCount} completed items",
                   backgroundColor = Color(0xFFE8F5E9),
-                  textColor = Color(0xFF1B5E20),
+                  textColor = Color(0xFF10B981),
                   borderColor = WorkOutlineVariant,
                   modifier = Modifier.weight(1f)
                 )
@@ -371,6 +385,321 @@ fun AnalyticsScreen(
           }
         }
       }
+    }
+
+    // Tab 2: Team Reports (Custom Form Aggregations)
+    if (selectedTab == 2) {
+      LazyColumn(
+        modifier = Modifier.weight(1f),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+      ) {
+        items(teamReports, key = { it.teamId }) { report ->
+          TeamReportCard(report = report)
+        }
+        
+        // Empty state
+        if (teamReports.isEmpty()) {
+          item {
+            Column(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+              horizontalAlignment = Alignment.CenterHorizontally,
+              verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+              Icon(
+                Icons.Default.Assessment,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = Color(0xFF79747E)
+              )
+              Text(
+                text = "No Team Reports Available",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF49454F)
+              )
+              Text(
+                text = "Custom form teams will appear here after submissions",
+                fontSize = 12.sp,
+                color = Color(0xFF79747E)
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun TeamReportCard(report: TeamReportSummary) {
+  Surface(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clip(RoundedCornerShape(16.dp))
+      .border(1.dp, WorkOutlineVariant, RoundedCornerShape(16.dp)),
+    color = Color.White
+  ) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      // Header
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Column {
+          Text(
+            text = report.teamName,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = DarkSlateDeep
+          )
+          Text(
+            text = "${report.companyName} · ${report.eodFormType}",
+            fontSize = 11.sp,
+            color = Color(0xFF49454F)
+          )
+        }
+
+        Box(
+          modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFEADDFF))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+          Text(
+            text = "${report.todaySubmissions}/${report.totalMembers}",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = DarkSlateDeep
+          )
+        }
+      }
+
+      HorizontalDivider(color = WorkOutlineVariant, thickness = 1.dp)
+
+      // Custom Metrics based on form type
+      when (report.eodFormType) {
+        "TELECALLING" -> TelecallingMetrics(report.customMetrics)
+        "COUNSELLOR" -> CounsellorMetrics(report.customMetrics)
+        "MARKETING" -> MarketingMetrics(report.customMetrics)
+        "SIMPLE" -> SimpleMetrics(report.customMetrics)
+      }
+      
+      // Submissions list
+      report.customMetrics?.submissionsList?.let { submissions ->
+        if (submissions.isNotEmpty()) {
+          HorizontalDivider(color = WorkOutlineVariant, thickness = 1.dp)
+          
+          Text(
+            text = "Today's Submissions",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = DarkSlateDeep
+          )
+          
+          submissions.forEach { submission ->
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  text = submission.employeeName,
+                  fontSize = 12.sp,
+                  fontWeight = FontWeight.Medium,
+                  color = DarkSlateDeep
+                )
+                Text(
+                  text = submission.formData,
+                  fontSize = 10.sp,
+                  color = Color(0xFF79747E),
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              }
+              Text(
+                text = submission.submissionTime,
+                fontSize = 10.sp,
+                color = Color(0xFF79747E)
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun TelecallingMetrics(metrics: CustomTeamMetrics?) {
+  metrics?.let { m ->
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Text(
+        text = "📞 Telecalling Metrics",
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = DarkSlateDeep
+      )
+      
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+      ) {
+        MetricCard(
+          title = "Total Calls",
+          count = "${m.totalCalls}",
+          subtitle = "Made today",
+          backgroundColor = Color(0xFFE8F5E9),
+          textColor = Color(0xFF10B981),
+          borderColor = WorkOutlineVariant,
+          modifier = Modifier.weight(1f)
+        )
+        MetricCard(
+          title = "Follow-ups",
+          count = "${m.totalFollowUps}",
+          subtitle = "Scheduled",
+          backgroundColor = Color(0xFFFFF3E0),
+          textColor = Color(0xFFE65100),
+          borderColor = WorkOutlineVariant,
+          modifier = Modifier.weight(1f)
+        )
+      }
+      
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+      ) {
+        MetricCard(
+          title = "Conversions",
+          count = "${m.totalConversions}",
+          subtitle = "Successful",
+          backgroundColor = Color(0xFFE3F2FD),
+          textColor = Color(0xFF0D47A1),
+          borderColor = WorkOutlineVariant,
+          modifier = Modifier.weight(1f)
+        )
+        MetricCard(
+          title = "Conv. Rate",
+          count = "${String.format("%.1f", m.conversionRate)}%",
+          subtitle = "Success ratio",
+          backgroundColor = Color(0xFFF3E7FF),
+          textColor = DarkSlateDeep,
+          borderColor = WorkOutlineVariant,
+          modifier = Modifier.weight(1f)
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun CounsellorMetrics(metrics: CustomTeamMetrics?) {
+  metrics?.let { m ->
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Text(
+        text = "🎓 Counsellor Metrics",
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = DarkSlateDeep
+      )
+      
+      MetricCard(
+        title = "Total Students",
+        count = "${m.totalStudents}",
+        subtitle = "Logged today",
+        backgroundColor = Color(0xFFE8F5E9),
+        textColor = Color(0xFF10B981),
+        borderColor = WorkOutlineVariant,
+        modifier = Modifier.fillMaxWidth()
+      )
+      
+      if (m.studentsByCountry.isNotEmpty()) {
+        Text(
+          text = "By Country:",
+          fontSize = 11.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color(0xFF49454F)
+        )
+        m.studentsByCountry.entries.take(5).forEach { (country, count) ->
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Text(text = country, fontSize = 11.sp, color = Color(0xFF49454F))
+            Text(text = "$count", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun MarketingMetrics(metrics: CustomTeamMetrics?) {
+  metrics?.let { m ->
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Text(
+        text = "🏫 Marketing Metrics",
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = DarkSlateDeep
+      )
+      
+      MetricCard(
+        title = "College Visits",
+        count = "${m.totalCollegeVisits}",
+        subtitle = "${m.collegesVisited.size} unique colleges",
+        backgroundColor = Color(0xFFF3E7FF),
+        textColor = DarkSlateDeep,
+        borderColor = WorkOutlineVariant,
+        modifier = Modifier.fillMaxWidth()
+      )
+      
+      if (m.collegesVisited.isNotEmpty()) {
+        Text(
+          text = "Colleges Visited:",
+          fontSize = 11.sp,
+          fontWeight = FontWeight.SemiBold,
+          color = Color(0xFF49454F)
+        )
+        m.collegesVisited.take(5).forEach { college ->
+          Text(
+            text = "• $college",
+            fontSize = 11.sp,
+            color = Color(0xFF49454F),
+            modifier = Modifier.padding(start = 8.dp)
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun SimpleMetrics(metrics: CustomTeamMetrics?) {
+  metrics?.let { m ->
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Text(
+        text = "📝 Simple Reports",
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = DarkSlateDeep
+      )
+      
+      MetricCard(
+        title = "Submissions",
+        count = "${m.submissionsList.size}",
+        subtitle = "Received today",
+        backgroundColor = Color(0xFFF5F5F5),
+        textColor = Color(0xFF49454F),
+        borderColor = WorkOutlineVariant,
+        modifier = Modifier.fillMaxWidth()
+      )
     }
   }
 }

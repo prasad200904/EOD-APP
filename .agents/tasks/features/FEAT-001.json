@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix Firestore security rules to allow admin users to read the /employees collection. Current rule blocks admin because their authentication token lacks custom claims (admin, role, employeeId, teamId) that are only set by Cloud Functions or Admin SDK. We will modify the /employees read rule to use email-based admin detection instead of token claims.",
+  "status": "pending",
+  "steps": [
+    "Read firestore.rules to understand current employee read rule (lines 85-92)",
+    "Modify the employee read rule to allow: (1) any admin identified by email (admin@workcore.com, admin@workcore.internal, vundraladurgaprasad@gmail.com), OR (2) any employee reading their own team. Use a helper function or inline check.",
+    "Ensure write rules remain admin-only",
+    "Deploy rules to Firebase Console using: firebase deploy --only firestore:rules",
+    "Verify in Firebase Console: Firestore > Rules tab shows updated employee rule",
+    "Test rule in Rules Playground with mock admin request.auth.uid and request.auth.token to confirm Allow result"
+  ],
+  "acceptance_criteria": [
+    "firestore.rules modified to allow admin email-based read of /employees",
+    "Rule deployed to Firebase Console successfully",
+    "Rules Playground test passes with mock admin request",
+    "Running app and logging in as admin triggers sync without PERMISSION_DENIED errors"
+  ],
+  "verification": [
+    "firebase deploy --only firestore:rules (returns success)",
+    "Open Firebase Console Firestore > Rules, confirm new /employees rule is visible",
+    "In Rules Playground, test read as admin: rule evaluates to 'Allow'",
+    "Run app, login as admin, check logs: 'Fetched X employees' where X > 0 (if Firestore has data)"
+  ],
+  "blocked_reason": null,
+  "findings": "Current security rule requires token.admin or token.role for isAdmin(), but these claims are never set by the app (Cloud Functions not implemented). Rule blocks all admin reads silently (returns empty list, not error). Solution: Switch to email-based admin check in rules file instead of relying on token claims."
+}

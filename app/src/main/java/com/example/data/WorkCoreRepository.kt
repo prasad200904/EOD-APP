@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import com.example.data.auth.AuthRepository
+import com.example.data.auth.VerifiedSession
 import com.example.data.firebase.FirebaseDataSource
 import com.example.data.firebase.EodHistoryQueryResult
 import com.google.firebase.firestore.DocumentSnapshot
@@ -135,7 +137,8 @@ data class DashboardSummary(
 
 class WorkCoreRepository(
   private val database: AppDatabase,
-  private val firebaseDataSource: FirebaseDataSource? = null
+  private val firebaseDataSource: FirebaseDataSource? = null,
+  val authRepository: AuthRepository = AuthRepository()
 ) {
   private val dailyEodDao = database.dailyEodDao()
   private val employeeDao = database.employeeDao()
@@ -494,21 +497,20 @@ class WorkCoreRepository(
     designation: String = "Team Member",
     departmentCode: String = manager.department,
     sendEmailLink: Boolean = false,
-    password: String = "password123"
+    password: String = ""
   ): Result<String> = withContext(Dispatchers.IO) {
     try {
       // CRITICAL FIX: Generate real employee ID at save time, ignoring the UI's placeholder value
-      // This prevents ID collisions that occurred when the UI passed hardcoded "$prefix-014"
       val realEmployeeId = generateNextEmployeeId(departmentCode)
       
       android.util.Log.d("WorkCoreRepository", "Creating employee: $name with generated ID $realEmployeeId (UI sent: $employeeCode)")
       
       val newEmployee = EmployeeEntity(
-        employeeId = realEmployeeId, // Use generated ID, not the parameter
+        employeeId = realEmployeeId,
         name = name,
         email = if (email.isBlank()) "$realEmployeeId@company.com" else email,
         phone = "",
-        password = password,
+        password = "", // Client never stores passwords
         role = Role.EMPLOYEE.name,
         team = manager.team,
         department = departmentCode,
@@ -520,7 +522,7 @@ class WorkCoreRepository(
       )
 
       addEmployee(newEmployee)
-      Result.success(realEmployeeId) // Return the actual assigned ID, not the UI placeholder
+      Result.success(realEmployeeId)
     } catch (e: Exception) {
       Result.failure(e)
     }
@@ -530,13 +532,12 @@ class WorkCoreRepository(
     managerEmpId: String,
     name: String,
     employeeId: String,
-    password: String
+    password: String = ""
   ): Result<String> = withContext(Dispatchers.IO) {
     try {
       val mgr = employeeDao.getEmployeeById(managerEmpId)
         ?: return@withContext Result.failure(IllegalArgumentException("Manager not found"))
       
-      // CRITICAL FIX: Generate real employee ID, ignoring the UI parameter
       val realEmployeeId = generateNextEmployeeId(mgr.department)
       
       android.util.Log.d("WorkCoreRepository", "Creating employee: $name with generated ID $realEmployeeId (UI sent: $employeeId)")
@@ -544,11 +545,11 @@ class WorkCoreRepository(
       val result = createEmployeeByManager(
         manager = mgr,
         name = name,
-        employeeCode = realEmployeeId, // Pass generated ID
-        password = password
+        employeeCode = realEmployeeId,
+        password = ""
       )
       
-      result // Returns Result<String> with the real assigned ID
+      result
     } catch (e: Exception) {
       Result.failure(e)
     }
@@ -573,16 +574,6 @@ class WorkCoreRepository(
   }
 
   // ── Test helper methods ───────────────────────────────────────────
-
-  /** Authenticate by team name + password. Used by tests and team login flow. */
-  suspend fun authenticateByTeam(teamName: String, password: String): Result<Unit> =
-    withContext(Dispatchers.IO) {
-      val team = teamDao.getAllTeams().first()
-        .firstOrNull { it.name.equals(teamName, ignoreCase = true) }
-        ?: return@withContext Result.failure(IllegalArgumentException("Team '$teamName' not found"))
-      if (team.teamPassword == password) Result.success(Unit)
-      else Result.failure(IllegalArgumentException("Invalid password for $teamName"))
-    }
 
   /** Get employees belonging to a specific team. Used by tests and roster screens. */
   suspend fun getEmployeesByTeam(teamName: String): List<EmployeeEntity> =
@@ -803,105 +794,6 @@ class WorkCoreRepository(
     notificationDao.markAllAsRead()
   }
 
-  /**
-   * Ensures Firebase Authentication session is established for the given employee.
-   * Called after successful local password verification in authenticate().
-   * 
-   * - Signs into Firebase Auth with employee's email + password
-   * - Creates Firebase Auth account on first login if it doesn't exist
-   * - Saves user profile to Firestore /users/{uid} doc (required by firestore.rules)
-   * 
-   * Silently skips if:
-   * - Firebase is not initialized (google-services.json missing)
-   * - Employee email is blank
-   * - Network is unavailable
-   */
-  private suspend fun ensureFirebaseSession(
-    employee: EmployeeEntity,
-    rawPassword: String
-  ): Result<Unit> = withContext(Dispatchers.IO) {
-    try {
-      // Skip if Firebase not configured
-      if (firebaseDataSource?.isFirebaseInitialized != true) {
-        android.util.Log.w("WorkCoreRepository", "⚠️ Firebase not initialized - skipping Firebase Auth session")
-        return@withContext Result.success(Unit)
-      }
-
-      // Skip if email is blank (cannot create Firebase Auth account)
-      if (employee.email.isBlank()) {
-        android.util.Log.w("WorkCoreRepository", "⚠️ Employee ${employee.employeeId} has blank email - skipping Firebase Auth")
-        return@withContext Result.success(Unit)
-      }
-
-      android.util.Log.d("WorkCoreRepository", "🔐 Establishing Firebase Auth session for ${employee.email}...")
-
-      // Attempt to sign in first
-      val signInResult = firebaseDataSource.signInWithEmail(employee.email, rawPassword)
-      
-      if (signInResult.isSuccess) {
-        val firebaseUser = signInResult.getOrThrow()
-        android.util.Log.i("WorkCoreRepository", "✅ Firebase Auth sign-in successful - UID: ${firebaseUser.uid}")
-        
-        // Save/update user profile in Firestore /users/{uid}
-        val profileResult = firebaseDataSource.saveUserProfile(
-          uid = firebaseUser.uid,
-          name = employee.name,
-          email = employee.email,
-          employeeId = employee.employeeId,
-          teamId = employee.team,
-          departmentId = employee.departmentId,
-          isNewUser = false
-        )
-        
-        if (profileResult.isSuccess) {
-          android.util.Log.i("WorkCoreRepository", "✅ User profile saved to Firestore /users/${firebaseUser.uid}")
-        } else {
-          android.util.Log.w("WorkCoreRepository", "⚠️ Failed to save user profile: ${profileResult.exceptionOrNull()?.message}")
-        }
-        
-        return@withContext Result.success(Unit)
-      } else {
-        // Sign-in failed - likely account doesn't exist yet, try creating it
-        val exception = signInResult.exceptionOrNull()
-        android.util.Log.d("WorkCoreRepository", "🔄 Sign-in failed (${exception?.message}), attempting to create Firebase Auth account...")
-        
-        val createResult = firebaseDataSource.createUserWithEmail(employee.email, rawPassword)
-        
-        if (createResult.isSuccess) {
-          val firebaseUser = createResult.getOrThrow()
-          android.util.Log.i("WorkCoreRepository", "✅ Firebase Auth account created - UID: ${firebaseUser.uid}")
-          
-          // Save user profile to Firestore
-          val profileResult = firebaseDataSource.saveUserProfile(
-            uid = firebaseUser.uid,
-            name = employee.name,
-            email = employee.email,
-            employeeId = employee.employeeId,
-            teamId = employee.team,
-            departmentId = employee.departmentId,
-            isNewUser = true
-          )
-          
-          if (profileResult.isSuccess) {
-            android.util.Log.i("WorkCoreRepository", "✅ User profile saved to Firestore /users/${firebaseUser.uid}")
-          } else {
-            android.util.Log.w("WorkCoreRepository", "⚠️ Failed to save user profile: ${profileResult.exceptionOrNull()?.message}")
-          }
-          
-          return@withContext Result.success(Unit)
-        } else {
-          val createException = createResult.exceptionOrNull()
-          android.util.Log.e("WorkCoreRepository", "❌ Failed to create Firebase Auth account: ${createException?.message}", createException)
-          return@withContext Result.failure(createException ?: Exception("Firebase account creation failed"))
-        }
-      }
-    } catch (e: Exception) {
-      android.util.Log.e("WorkCoreRepository", "❌ ensureFirebaseSession error: ${e.message}", e)
-      // Don't fail the login - Firebase session is supplementary
-      return@withContext Result.success(Unit)
-    }
-  }
-
   suspend fun authenticate(
     role: Role,
     teamName: String?,
@@ -909,78 +801,97 @@ class WorkCoreRepository(
     passwordInput: String
   ): Result<EmployeeEntity> = withContext(Dispatchers.IO) {
     val cleanId = identifier.trim()
-    val cleanPass = passwordInput.trim()
-
     if (cleanId.isEmpty()) {
-      return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Please enter your User ID / Username."))
+      return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Please enter your User ID or Email."))
     }
-    if (cleanPass.isEmpty()) {
+    if (passwordInput.isEmpty()) {
       return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Please enter your password."))
+    }
+    if (role == Role.ADMIN && !cleanId.contains("@")) {
+      return@withContext Result.failure<EmployeeEntity>(
+        IllegalArgumentException("Enter the registered admin email address, not the username.")
+      )
     }
 
     val allEmps = employeeDao.getAllEmployees().first()
 
+    // Look up email by identifier locally
+    val localEmp = allEmps.firstOrNull {
+      it.employeeId.equals(cleanId, ignoreCase = true) ||
+      it.email.equals(cleanId, ignoreCase = true) ||
+      (cleanId.equals("admin", ignoreCase = true) && it.role.equals(Role.ADMIN.name, ignoreCase = true))
+    }
+
+    val targetEmail = when {
+      cleanId.contains("@") -> cleanId
+      localEmp != null && localEmp.email.isNotBlank() -> localEmp.email
+      cleanId.equals("admin", ignoreCase = true) -> {
+        localEmp?.email?.ifBlank { null }
+          ?: SeedData.employees.firstOrNull { it.employeeId.equals("ADMIN", ignoreCase = true) }?.email
+          ?: "admin@workcore.com"
+      }
+      else -> {
+        return@withContext Result.failure<EmployeeEntity>(
+          IllegalArgumentException("Account '$cleanId' not found. Please log in with your registered email.")
+        )
+      }
+    }
+
+    val signInResult = authRepository.signIn(targetEmail, passwordInput)
+    if (signInResult.isFailure) {
+      return@withContext Result.failure<EmployeeEntity>(
+        signInResult.exceptionOrNull() ?: IllegalArgumentException("Invalid ID or password.")
+      )
+    }
+
+    val session = signInResult.getOrThrow()
+    val tokenRole = session.role
+
     when (role) {
       Role.ADMIN -> {
-        val adminInDb = allEmps.firstOrNull {
-          it.role == Role.ADMIN.name &&
-          (it.employeeId.equals(cleanId, ignoreCase = true) || it.email.equals(cleanId, ignoreCase = true) || cleanId.equals("admin", ignoreCase = true))
-        }
-
-        if (cleanId.equals("admin", ignoreCase = true)) {
-          // Find admin account in DB or use seed data
-          val adminUser = adminInDb ?: SeedData.employees.first { it.employeeId == "ADMIN" }
-          
-          // FIXED: Only accept the actual stored password, no hardcoded backdoors
-          if (adminUser.password == cleanPass) {
-            // Establish Firebase Auth session after successful password verification
-            ensureFirebaseSession(adminUser, cleanPass)
-            return@withContext Result.success(adminUser)
-          } else {
-            return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Invalid Admin password."))
-          }
-        } else if (adminInDb != null) {
-          // FIXED: Only accept the actual stored password, no hardcoded backdoors
-          if (adminInDb.password == cleanPass) {
-            // Establish Firebase Auth session after successful password verification
-            ensureFirebaseSession(adminInDb, cleanPass)
-            return@withContext Result.success(adminInDb)
-          } else {
-            return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Invalid Admin password."))
-          }
-        } else {
-          return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Admin account '$cleanId' not found."))
+        if (!session.isAdmin) {
+          authRepository.signOut()
+          return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Access denied: Account is not an administrator."))
         }
       }
-
-      Role.EMPLOYEE -> {
-        if (teamName.isNullOrBlank()) {
-          return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Please select your Team."))
-        }
-        
-        val employee = allEmps.firstOrNull {
-          it.role == Role.EMPLOYEE.name &&
-          (it.employeeId.equals(cleanId, ignoreCase = true) || 
-           it.email.equals(cleanId, ignoreCase = true))
-        }
-
-        if (employee == null) {
-          return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Employee account '$cleanId' not found."))
-        }
-        if (!employee.isActive) {
-          return@withContext Result.failure<EmployeeEntity>(IllegalStateException("Employee account is deactivated."))
-        }
-        
-        // FIXED: Only accept the actual stored password, no hardcoded backdoors
-        if (employee.password == cleanPass) {
-          // Establish Firebase Auth session after successful password verification
-          ensureFirebaseSession(employee, cleanPass)
-          return@withContext Result.success(employee)
-        } else {
-          return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Invalid password."))
+      Role.EMPLOYEE, Role.MANAGER -> {
+        if (!session.isEmployee && !session.isManager && !session.isAdmin) {
+          authRepository.signOut()
+          return@withContext Result.failure<EmployeeEntity>(IllegalArgumentException("Access denied: Not authorized as an employee."))
         }
       }
     }
+
+    // Load / sync employee
+    val matchedEmp = session.employeeId?.let { employeeDao.getEmployeeById(it) }
+      ?: localEmp
+      ?: allEmps.firstOrNull { it.email.equals(session.email, ignoreCase = true) }
+      ?: if (session.isAdmin) {
+          SeedData.employees.firstOrNull { it.email.equals(session.email, ignoreCase = true) }
+            ?: SeedData.employees.firstOrNull { it.employeeId.equals("ADMIN", ignoreCase = true) }
+        } else null
+
+    val resolvedEmp = matchedEmp ?: EmployeeEntity(
+      employeeId = session.employeeId ?: session.uid,
+      name = session.email.substringBefore("@"),
+      email = session.email,
+      phone = "",
+      password = "",
+      role = tokenRole,
+      team = session.teamId ?: teamName ?: "",
+      department = "",
+      departmentId = "",
+      designation = if (session.isAdmin) "Administrator" else "Team Member",
+      joiningDate = getTodayDateString(),
+      isActive = true
+    )
+
+    if (!resolvedEmp.isActive) {
+      authRepository.signOut()
+      return@withContext Result.failure<EmployeeEntity>(IllegalStateException("Employee account is deactivated."))
+    }
+
+    Result.success(resolvedEmp.copy(role = tokenRole))
   }
 
   fun computeManagerTeamMetrics(
@@ -1047,14 +958,15 @@ class WorkCoreRepository(
 
     when (reportType.uppercase()) {
       "EOD" -> {
-        sb.append("Name,Date,Project Title,Description,Status\n")
+        sb.append("Employee ID,Employee Name,Date,Project Title,Description,Status\n")
         eods.sortedByDescending { it.date }.forEach { eod ->
+          val empId = "\"${eod.employeeId.replace("\"", "\"\"")}\""
           val name = "\"${eod.employeeName.replace("\"", "\"\"")}\""
           val date = eod.date
           val project = "\"${eod.project.replace("\"", "\"\"")}\""
           val description = "\"${eod.todayWork.replace("\"", "\"\"")}\""
           val status = eod.workStatus
-          sb.append("$name,$date,$project,$description,$status\n")
+          sb.append("$empId,$name,$date,$project,$description,$status\n")
         }
       }
       else -> {
@@ -1477,20 +1389,59 @@ class WorkCoreRepository(
     android.util.Log.d("WorkCoreRepository", "Firebase initialized: ${firebaseDataSource != null}")
     
     return@withContext try {
-      val result = firebaseDataSource?.fetchEmployees()
-      
-      if (result == null) {
+      // STEP 1: Check if Firebase is properly initialized
+      if (firebaseDataSource == null) {
         android.util.Log.w("WorkCoreRepository", "⚠️ Firebase not initialized, skipping sync")
         return@withContext Result.success(0)
       }
+      
+      // STEP 2: Check if current user is authenticated with Firebase
+      val currentUser = firebaseDataSource.currentUser
+      if (currentUser == null) {
+        android.util.Log.e("WorkCoreRepository", "❌ Firebase Auth not initialized. User not signed in.")
+        return@withContext Result.failure(IllegalStateException("User not authenticated with Firebase."))
+      }
+      
+      // STEP 3: Get count of local employees before sync (to detect first sync)
+      val localEmployeesBeforeSync = employeeDao.getAllEmployees().first()
+      val localCountBefore = localEmployeesBeforeSync.size
+      android.util.Log.d("WorkCoreRepository", "📊 Local database has $localCountBefore employees before sync")
+      
+      // STEP 4: Check if this is the first sync and we need to upload
+      val employeesUploaded = firebaseDataSource.areEmployeesUploadedToFirestore()
+      
+      if (!employeesUploaded && localCountBefore > 0) {
+        android.util.Log.i("WorkCoreRepository", "🔥 First sync detected: local DB has employees but Firebase upload not tracked. Uploading ${localEmployeesBeforeSync.size} employees to Firestore...")
+        val uploadResult = firebaseDataSource.uploadAllEmployeesToFirestore(localEmployeesBeforeSync)
+        uploadResult.fold(
+          onSuccess = { uploadCount ->
+            android.util.Log.i("WorkCoreRepository", "✅ Successfully uploaded $uploadCount employees to Firestore")
+            firebaseDataSource.markEmployeesUploadedToFirestore(true)
+          },
+          onFailure = { error ->
+            android.util.Log.w("WorkCoreRepository", "⚠️ Upload failed (will continue with fetch): ${error.message}")
+            // Continue anyway - try to fetch from Firestore
+          }
+        )
+      }
+      
+      // STEP 5: Fetch employees from Firebase
+      val result = firebaseDataSource.fetchEmployees()
       
       result.fold(
         onSuccess = { employees ->
           android.util.Log.d("WorkCoreRepository", "✅ Fetched ${employees.size} employees from Firebase")
           
           if (employees.isEmpty()) {
-            android.util.Log.w("WorkCoreRepository", "⚠️ No employees found in Firebase!")
-            return@withContext Result.success(0)
+            // IMPORTANT: Detect silent empty fetch (possible security rule issue)
+            if (localCountBefore > 0) {
+              android.util.Log.w("WorkCoreRepository", "⚠️ SYNC WARNING: Firestore returned 0 employees, but local DB has $localCountBefore employees. This suggests a security rule issue or network problem.")
+              return@withContext Result.failure(IllegalStateException("Employee sync returned zero. Security rules may be blocking the read or employees collection is empty. Check Firestore rules or retry."))
+            } else {
+              // First install, no data anywhere — this is OK
+              android.util.Log.i("WorkCoreRepository", "ℹ️ No employees in Firestore or local DB (first install is OK).")
+              return@withContext Result.success(0)
+            }
           }
           
           // Log first few employees for verification

@@ -48,16 +48,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.example.data.DepartmentEntity
 import com.example.data.EmployeeEntity
-import com.example.ui.theme.EodDarkBackground
-import com.example.ui.theme.EodDarkCardBorder
-import com.example.ui.theme.EodDarkInputBg
-import com.example.ui.theme.EodDarkInputBorder
-import com.example.ui.theme.EodPrimaryPurple
-import com.example.ui.theme.EodTextMuted
-import com.example.ui.theme.EodTextPrimary
-import com.example.ui.theme.EodTextSecondary
+import com.example.data.TeamMemberDataEntity
+import com.example.data.TeamType
+import com.example.data.Country
+import com.example.data.CounsellingApplicationStatus
+import com.example.data.TelecallingStatus
+import com.example.ui.theme.WarmCream
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.DarkSlateDeep
+import com.example.ui.theme.SubtleText
+import com.example.ui.theme.WarmCardBorder
+import com.example.ui.theme.MintGreen
 
 /**
  * Screen 2: "Add employee"
@@ -89,7 +94,8 @@ fun AddEmployeeScreen(
     joiningDate: String,
     designation: String,
     departmentCode: String,
-    sendEmailLink: Boolean
+    sendEmailLink: Boolean,
+    teamSpecificData: Map<TeamType, TeamMemberDataEntity?>
   ) -> Unit,
   modifier: Modifier = Modifier
 ) {
@@ -98,16 +104,19 @@ fun AddEmployeeScreen(
 
   // Find managed departments for this manager
   val managedCodes = remember(currentManager) {
-    if (currentManager == null) setOf("ML", "DB")
-    else if (currentManager.role == "ADMIN") setOf("ML", "DB", "GT", "Writing", "Cyber")
+    if (currentManager?.role == "ADMIN") allDepartments.map { it.code }.toSet()
     else {
-      currentManager.managedDepartments.split(",")
+      (currentManager?.managedDepartments?.split(",")
+        .orEmpty()
         .map { it.trim() }
-        .filter { it.isNotEmpty() }
-        .toSet()
-        .ifEmpty { setOf(currentManager.department) }
+        .filter { it.isNotEmpty() })
+        .toSet().ifEmpty { currentManager?.department?.let { setOf(it) } ?: emptySet() }
     }
   }
+
+  // Department grid rows (all departments from SeedData)
+  val deptCodesList = allDepartments.map { it.code }.distinct()
+  val deptRows = deptCodesList.chunked(2)
 
   var fullName by remember { mutableStateOf("Meera Iyer") }
   var workEmail by remember { mutableStateOf("meera.iyer@company.com") }
@@ -115,6 +124,32 @@ fun AddEmployeeScreen(
   var joiningDate by remember { mutableStateOf("22 Sep") }
   var designation by remember { mutableStateOf("ML Engineer") }
   var emailSetupLinkEnabled by remember { mutableStateOf(true) }
+
+  var selectedTeamType by remember { mutableStateOf<TeamType?>(null) }
+  var teamSpecificData by remember { mutableStateOf<MutableMap<TeamType, TeamMemberDataEntity>>(mutableMapOf()) }
+
+  // Counselling fields
+  var counsellingStudentName by remember { mutableStateOf("") }
+  var counsellingUniversityName by remember { mutableStateOf("") }
+  var counsellingCountry by remember { mutableStateOf(Country.USA) }
+  var counsellingAppStatus by remember { mutableStateOf(CounsellingApplicationStatus.APPLICATION_SUBMITTED) }
+  var counsellingDescription by remember { mutableStateOf("") }
+
+  // Telecalling fields
+  var telecallingCalls by remember { mutableStateOf("0") }
+  var telecallingFollowUps by remember { mutableStateOf("0") }
+  var telecallingConversions by remember { mutableStateOf("0") }
+  var telecallingStatus by remember { mutableStateOf(TelecallingStatus.IN_PROGRESS) }
+  var telecallingDescription by remember { mutableStateOf("") }
+
+  // Marketing fields
+  var marketingCollegeName by remember { mutableStateOf("") }
+  var marketingPersonNameVisited by remember { mutableStateOf("") }
+  var marketingPersonDesignation by remember { mutableStateOf("") }
+  var marketingDescription by remember { mutableStateOf("") }
+
+  // Other fields
+  var otherDescription by remember { mutableStateOf("") }
 
   // Auto-generate employee code preview (actual ID assigned on save)
   val employeeCodePreview by remember(selectedDepartmentCode) {
@@ -131,10 +166,58 @@ fun AddEmployeeScreen(
     }
   }
 
+  fun buildTeamSpecificData(): Map<TeamType, TeamMemberDataEntity?> {
+    return selectedTeamType?.let { teamType ->
+      val data = when (teamType) {
+        TeamType.COUNSELLING -> TeamMemberDataEntity(
+          teamType = teamType.departmentCode,
+          studentName = counsellingStudentName,
+          universityName = counsellingUniversityName,
+          country = counsellingCountry.name,
+          applicationStatus = counsellingAppStatus.name,
+          description = counsellingDescription
+        )
+
+        TeamType.TELECALLING -> TeamMemberDataEntity(
+          teamType = teamType.departmentCode,
+          telecallingStatus = telecallingStatus.name,
+          calls = telecallingCalls.toIntOrNull() ?: 0,
+          followUps = telecallingFollowUps.toIntOrNull() ?: 0,
+          conversions = telecallingConversions.toIntOrNull() ?: 0,
+          description = telecallingDescription
+        )
+
+        TeamType.MARKETING -> TeamMemberDataEntity(
+          teamType = teamType.departmentCode,
+          collegeName = marketingCollegeName,
+          personNameVisited = marketingPersonNameVisited,
+          personDesignation = marketingPersonDesignation,
+          description = marketingDescription
+        )
+
+        TeamType.OTHER -> TeamMemberDataEntity(
+          teamType = teamType.departmentCode,
+          description = otherDescription
+        )
+      }
+      // Include the entry only if at least one meaningful field is filled
+      if (data.studentName.isNotBlank() || data.universityName.isNotBlank() ||
+        data.country.isNotBlank() || data.applicationStatus.isNotBlank() ||
+        data.telecallingStatus.isNotBlank() || data.calls > 0 || data.followUps > 0 ||
+        data.conversions > 0 || data.collegeName.isNotBlank() ||
+        data.personNameVisited.isNotBlank() || data.personDesignation.isNotBlank() ||
+        data.description.isNotBlank()) {
+        mapOf(teamType to data)
+      } else {
+        emptyMap()
+      }
+    } ?: emptyMap()
+  }
+
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(WarmCream)
   ) {
     Column(
       modifier = Modifier
@@ -155,7 +238,7 @@ fun AddEmployeeScreen(
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
-            tint = EodTextPrimary,
+            tint = DarkSlateDeep,
             modifier = Modifier.size(24.dp)
           )
         }
@@ -166,7 +249,7 @@ fun AddEmployeeScreen(
           text = "Add employee",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = EodTextPrimary
+          color = DarkSlateDeep
         )
       }
 
@@ -176,23 +259,23 @@ fun AddEmployeeScreen(
           text = "Full name",
           fontSize = 13.sp,
           fontWeight = FontWeight.Medium,
-          color = EodTextSecondary
+          color = SubtleText
         )
         OutlinedTextField(
           value = fullName,
           onValueChange = { fullName = it },
-          placeholder = { Text("e.g. Meera Iyer", color = EodTextMuted, fontSize = 14.sp) },
+          placeholder = { Text("e.g. Meera Iyer", color = SubtleText, fontSize = 14.sp) },
           modifier = Modifier
             .fillMaxWidth()
             .testTag("input_full_name"),
           shape = RoundedCornerShape(12.dp),
           colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = EodDarkInputBg,
-            unfocusedContainerColor = EodDarkInputBg,
-            focusedBorderColor = EodPrimaryPurple,
-            unfocusedBorderColor = EodDarkCardBorder,
-            focusedTextColor = EodTextPrimary,
-            unfocusedTextColor = EodTextPrimary
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = CoralPrimary,
+            unfocusedBorderColor = WarmCardBorder,
+            focusedTextColor = DarkSlateDeep,
+            unfocusedTextColor = DarkSlateDeep
           ),
           singleLine = true
         )
@@ -204,23 +287,23 @@ fun AddEmployeeScreen(
           text = "Work email",
           fontSize = 13.sp,
           fontWeight = FontWeight.Medium,
-          color = EodTextSecondary
+          color = SubtleText
         )
         OutlinedTextField(
           value = workEmail,
           onValueChange = { workEmail = it },
-          placeholder = { Text("e.g. meera.iyer@company.com", color = EodTextMuted, fontSize = 14.sp) },
+          placeholder = { Text("e.g. meera.iyer@company.com", color = SubtleText, fontSize = 14.sp) },
           modifier = Modifier
             .fillMaxWidth()
             .testTag("input_work_email"),
           shape = RoundedCornerShape(12.dp),
           colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = EodDarkInputBg,
-            unfocusedContainerColor = EodDarkInputBg,
-            focusedBorderColor = EodPrimaryPurple,
-            unfocusedBorderColor = EodDarkCardBorder,
-            focusedTextColor = EodTextPrimary,
-            unfocusedTextColor = EodTextPrimary
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = CoralPrimary,
+            unfocusedBorderColor = WarmCardBorder,
+            focusedTextColor = DarkSlateDeep,
+            unfocusedTextColor = DarkSlateDeep
           ),
           singleLine = true
         )
@@ -240,7 +323,7 @@ fun AddEmployeeScreen(
             text = "Employee code",
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = EodTextSecondary
+            color = SubtleText
           )
           OutlinedTextField(
             value = employeeCodePreview,
@@ -251,12 +334,12 @@ fun AddEmployeeScreen(
               .testTag("input_employee_code"),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-              focusedContainerColor = EodDarkInputBg,
-              unfocusedContainerColor = EodDarkInputBg,
-              focusedBorderColor = EodDarkCardBorder,
-              unfocusedBorderColor = EodDarkCardBorder,
-              focusedTextColor = EodTextMuted,
-              unfocusedTextColor = EodTextMuted
+              focusedContainerColor = Color.White,
+              unfocusedContainerColor = Color.White,
+              focusedBorderColor = WarmCardBorder,
+              unfocusedBorderColor = WarmCardBorder,
+              focusedTextColor = SubtleText,
+              unfocusedTextColor = SubtleText
             ),
             singleLine = true
           )
@@ -271,23 +354,23 @@ fun AddEmployeeScreen(
             text = "Joining date",
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = EodTextSecondary
+            color = SubtleText
           )
           OutlinedTextField(
             value = joiningDate,
             onValueChange = { joiningDate = it },
-            placeholder = { Text("22 Sep", color = EodTextMuted, fontSize = 14.sp) },
+            placeholder = { Text("22 Sep", color = SubtleText, fontSize = 14.sp) },
             modifier = Modifier
               .fillMaxWidth()
               .testTag("input_joining_date"),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
-              focusedContainerColor = EodDarkInputBg,
-              unfocusedContainerColor = EodDarkInputBg,
-              focusedBorderColor = EodPrimaryPurple,
-              unfocusedBorderColor = EodDarkCardBorder,
-              focusedTextColor = EodTextPrimary,
-              unfocusedTextColor = EodTextPrimary
+              focusedContainerColor = Color.White,
+              unfocusedContainerColor = Color.White,
+              focusedBorderColor = CoralPrimary,
+              unfocusedBorderColor = WarmCardBorder,
+              focusedTextColor = DarkSlateDeep,
+              unfocusedTextColor = DarkSlateDeep
             ),
             singleLine = true
           )
@@ -300,23 +383,23 @@ fun AddEmployeeScreen(
           text = "Designation",
           fontSize = 13.sp,
           fontWeight = FontWeight.Medium,
-          color = EodTextSecondary
+          color = SubtleText
         )
         OutlinedTextField(
           value = designation,
           onValueChange = { designation = it },
-          placeholder = { Text("e.g. ML Engineer", color = EodTextMuted, fontSize = 14.sp) },
+          placeholder = { Text("e.g. ML Engineer", color = SubtleText, fontSize = 14.sp) },
           modifier = Modifier
             .fillMaxWidth()
             .testTag("input_designation"),
           shape = RoundedCornerShape(12.dp),
           colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = EodDarkInputBg,
-            unfocusedContainerColor = EodDarkInputBg,
-            focusedBorderColor = EodPrimaryPurple,
-            unfocusedBorderColor = EodDarkCardBorder,
-            focusedTextColor = EodTextPrimary,
-            unfocusedTextColor = EodTextPrimary
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            focusedBorderColor = CoralPrimary,
+            unfocusedBorderColor = WarmCardBorder,
+            focusedTextColor = DarkSlateDeep,
+            unfocusedTextColor = DarkSlateDeep
           ),
           singleLine = true
         )
@@ -333,25 +416,16 @@ fun AddEmployeeScreen(
             text = "Department",
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = EodTextSecondary
+            color = SubtleText
           )
           Text(
             text = "You manage ${managedCodes.size}",
             fontSize = 13.sp,
-            color = Color(0xFF9CA3AF)
+            color = SubtleText
           )
         }
 
-        // Grid of department chips:
-        // Row 1: ML, DB
-        // Row 2: GT, Writing
-        // Row 3: Cyber
-        val deptRows = listOf(
-          listOf("ML", "DB"),
-          listOf("GT", "Writing"),
-          listOf("Cyber")
-        )
-
+        // Grid of department chips from all available departments
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           deptRows.forEach { rowDepts ->
             Row(
@@ -385,7 +459,7 @@ fun AddEmployeeScreen(
                       text = deptCode,
                       fontSize = 14.sp,
                       fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                      color = if (isSelected) Color(0xFF60A5FA) else if (isManaged) EodTextPrimary else Color(0xFF6B7280)
+                      color = if (isSelected) CoralPrimary else if (isManaged) DarkSlateDeep else Color(0xFF6B7280)
                     )
                   }
                 }
@@ -404,6 +478,426 @@ fun AddEmployeeScreen(
           color = Color(0xFF6B7280),
           modifier = Modifier.padding(top = 2.dp)
         )
+      }
+
+      // Team type section
+      Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "Team type",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = SubtleText
+          )
+          Text(
+            text = "Select for team-specific tracking",
+            fontSize = 12.sp,
+            color = Color(0xFF6B7280)
+          )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          TeamType.entries.forEach { teamType ->
+            val isSelected = selectedTeamType == teamType
+
+            Surface(
+              modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clickable {
+                  selectedTeamType = teamType
+                },
+              color = if (isSelected) Color(0xFF172554) else Color(0xFF181922),
+              shape = RoundedCornerShape(12.dp),
+              border = BorderStroke(
+                1.dp,
+                if (isSelected) Color(0xFF7C3AED) else Color(0xFF262837)
+              )
+            ) {
+              Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = teamType.displayName,
+                  fontSize = 14.sp,
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                  color = if (isSelected) Color(0xFF9D6BCB) else DarkSlateDeep
+                )
+              }
+            }
+          }
+        }
+
+        // Team-specific fields
+        if (selectedTeamType != null) {
+          Spacer(modifier = Modifier.height(8.dp))
+          Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color(0xFF181922),
+            shape = RoundedCornerShape(14.dp),
+            border = BorderStroke(1.dp, Color(0xFF262837))
+          ) {
+            Column(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+            ) {
+              Text(
+                text = "Team-specific fields",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = DarkSlateDeep
+              )
+              Spacer(modifier = Modifier.height(8.dp))
+
+              when (selectedTeamType) {
+                TeamType.COUNSELLING -> {
+                  OutlinedTextField(
+                    value = counsellingStudentName,
+                    onValueChange = { counsellingStudentName = it },
+                    label = { Text("Student Name", fontSize = 12.sp) },
+                    placeholder = { Text("e.g., Rohan Mehta", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
+                  OutlinedTextField(
+                    value = counsellingUniversityName,
+                    onValueChange = { counsellingUniversityName = it },
+                    label = { Text("University Name", fontSize = 12.sp) },
+                    placeholder = { Text("e.g., University of Toronto", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
+                  Column {
+                    Text("Country", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = SubtleText)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                      Country.entries.forEach { country ->
+                        val countrySelected = counsellingCountry == country
+                        Surface(
+                          modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clickable { counsellingCountry = country },
+                          color = if (countrySelected) Color(0xFF172554) else Color(0xFF262837),
+                          shape = RoundedCornerShape(8.dp),
+                          border = BorderStroke(1.dp, if (countrySelected) Color(0xFF7C3AED) else Color(0xFF3F4157))
+                        ) {
+                          Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                          ) {
+                            Text(
+                              text = country.displayName,
+                              fontSize = 12.sp,
+                              fontWeight = if (countrySelected) FontWeight.Bold else FontWeight.Medium,
+                              color = if (countrySelected) Color(0xFF9D6BCB) else Color(0xFFCBD5E1)
+                            )
+                          }
+                        }
+                      }
+                    }
+                  }
+                  Spacer(modifier = Modifier.height(10.dp))
+                  Column {
+                    Text("Application Status", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = SubtleText)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                      CounsellingApplicationStatus.entries.forEach { status ->
+                        val statusSelected = counsellingAppStatus == status
+                        Surface(
+                          modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clickable { counsellingAppStatus = status },
+                          color = if (statusSelected) Color(0xFF172554) else Color(0xFF262837),
+                          shape = RoundedCornerShape(8.dp),
+                          border = BorderStroke(1.dp, if (statusSelected) Color(0xFF7C3AED) else Color(0xFF3F4157))
+                        ) {
+                          Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                          ) {
+                            Text(
+                              text = status.displayName,
+                              fontSize = 11.sp,
+                              fontWeight = if (statusSelected) FontWeight.Bold else FontWeight.Medium,
+                              color = if (statusSelected) Color(0xFF9D6BCB) else Color(0xFFCBD5E1)
+                            )
+                          }
+                        }
+                      }
+                    }
+                  }
+                  Spacer(modifier = Modifier.height(10.dp))
+                  OutlinedTextField(
+                    value = counsellingDescription,
+                    onValueChange = { counsellingDescription = it },
+                    label = { Text("Description", fontSize = 12.sp) },
+                    placeholder = { Text("Additional notes about counselling case", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 4,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                }
+
+                TeamType.TELECALLING -> {
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                  ) {
+                    OutlinedTextField(
+                      value = telecallingCalls,
+                      onValueChange = { telecallingCalls = it },
+                      label = { Text("Calls", fontSize = 12.sp) },
+                      placeholder = { Text("0", fontSize = 12.sp, color = SubtleText) },
+                      modifier = Modifier.weight(1f),
+                      singleLine = true,
+                      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                      shape = RoundedCornerShape(8.dp),
+                      colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = CoralPrimary,
+                        unfocusedBorderColor = Color(0xFFD1D5DB),
+                        focusedTextColor = DarkSlateDeep,
+                        unfocusedTextColor = DarkSlateDeep
+                      )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedTextField(
+                      value = telecallingFollowUps,
+                      onValueChange = { telecallingFollowUps = it },
+                      label = { Text("Follow-ups", fontSize = 12.sp) },
+                      placeholder = { Text("0", fontSize = 12.sp, color = SubtleText) },
+                      modifier = Modifier.weight(1f),
+                      singleLine = true,
+                      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                      shape = RoundedCornerShape(8.dp),
+                      colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = CoralPrimary,
+                        unfocusedBorderColor = Color(0xFFD1D5DB),
+                        focusedTextColor = DarkSlateDeep,
+                        unfocusedTextColor = DarkSlateDeep
+                      )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    OutlinedTextField(
+                      value = telecallingConversions,
+                      onValueChange = { telecallingConversions = it },
+                      label = { Text("Conversions", fontSize = 12.sp) },
+                      placeholder = { Text("0", fontSize = 12.sp, color = SubtleText) },
+                      modifier = Modifier.weight(1f),
+                      singleLine = true,
+                      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                      shape = RoundedCornerShape(8.dp),
+                      colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = CoralPrimary,
+                        unfocusedBorderColor = Color(0xFFD1D5DB),
+                        focusedTextColor = DarkSlateDeep,
+                        unfocusedTextColor = DarkSlateDeep
+                      )
+                    )
+                  }
+                  Spacer(modifier = Modifier.height(10.dp))
+                  Column {
+                    Text("Telecalling Status", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = SubtleText)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                      TelecallingStatus.entries.forEach { status ->
+                        val statusSelected = telecallingStatus == status
+                        Surface(
+                          modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clickable { telecallingStatus = status },
+                          color = if (statusSelected) Color(0xFF172554) else Color(0xFF262837),
+                          shape = RoundedCornerShape(8.dp),
+                          border = BorderStroke(1.dp, if (statusSelected) Color(0xFF7C3AED) else Color(0xFF3F4157))
+                        ) {
+                          Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                          ) {
+                            Text(
+                              text = status.displayName,
+                              fontSize = 11.sp,
+                              fontWeight = if (statusSelected) FontWeight.Bold else FontWeight.Medium,
+                              color = if (statusSelected) Color(0xFF9D6BCB) else Color(0xFFCBD5E1)
+                            )
+                          }
+                        }
+                      }
+                    }
+                  }
+                  Spacer(modifier = Modifier.height(10.dp))
+                  OutlinedTextField(
+                    value = telecallingDescription,
+                    onValueChange = { telecallingDescription = it },
+                    label = { Text("Description", fontSize = 12.sp) },
+                    placeholder = { Text("Notes about telecalling activity", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 4,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                }
+
+                TeamType.MARKETING -> {
+                  OutlinedTextField(
+                    value = marketingCollegeName,
+                    onValueChange = { marketingCollegeName = it },
+                    label = { Text("College Name", fontSize = 12.sp) },
+                    placeholder = { Text("e.g., Delhi University", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
+                  OutlinedTextField(
+                    value = marketingPersonNameVisited,
+                    onValueChange = { marketingPersonNameVisited = it },
+                    label = { Text("Person Name Visited", fontSize = 12.sp) },
+                    placeholder = { Text("e.g., Prof. Suresh Kumar", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
+                  OutlinedTextField(
+                    value = marketingPersonDesignation,
+                    onValueChange = { marketingPersonDesignation = it },
+                    label = { Text("Person Designation", fontSize = 12.sp) },
+                    placeholder = { Text("e.g., Dean of Admissions", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
+                  OutlinedTextField(
+                    value = marketingDescription,
+                    onValueChange = { marketingDescription = it },
+                    label = { Text("Description", fontSize = 12.sp) },
+                    placeholder = { Text("Notes about the marketing visit", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 4,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                }
+
+                TeamType.OTHER -> {
+                  OutlinedTextField(
+                    value = otherDescription,
+                    onValueChange = { otherDescription = it },
+                    label = { Text("Description", fontSize = 12.sp) },
+                    placeholder = { Text("Describe the other team activity", fontSize = 12.sp, color = SubtleText) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 4,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                      focusedContainerColor = Color.White,
+                      unfocusedContainerColor = Color.White,
+                      focusedBorderColor = CoralPrimary,
+                      unfocusedBorderColor = Color(0xFFD1D5DB),
+                      focusedTextColor = DarkSlateDeep,
+                      unfocusedTextColor = DarkSlateDeep
+                    )
+                  )
+                }
+                null -> {}
+              }
+            }
+          }
+        }
       }
 
       // 7. Toggle Card: Email setup link
@@ -444,12 +938,12 @@ fun AddEmployeeScreen(
                 text = "Email setup link",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = EodTextPrimary
+                color = DarkSlateDeep
               )
               Text(
                 text = "They set their own password",
                 fontSize = 12.sp,
-                color = Color(0xFF9CA3AF)
+                color = SubtleText
               )
             }
           }
@@ -461,7 +955,7 @@ fun AddEmployeeScreen(
               checkedThumbColor = Color.White,
               checkedTrackColor = Color(0xFF7C3AED),
               uncheckedThumbColor = Color(0xFF9CA3AF),
-              uncheckedTrackColor = Color(0xFF2B2D3A)
+              uncheckedTrackColor = Color(0xFFE8D5C4)
             )
           )
         }
@@ -476,10 +970,12 @@ fun AddEmployeeScreen(
             Toast.makeText(context, "Please enter full name", Toast.LENGTH_SHORT).show()
             return@Button
           }
-          if (workEmail.isBlank()) {
-            Toast.makeText(context, "Please enter work email", Toast.LENGTH_SHORT).show()
+          if (workEmail.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(workEmail.trim()).matches()) {
+            Toast.makeText(context, "Please enter a valid work email address", Toast.LENGTH_SHORT).show()
             return@Button
           }
+          // Build team-specific data map from the selected team type inputs
+          val teamSpecificData = buildTeamSpecificData()
           onCreateAccount(
             fullName,
             workEmail,
@@ -487,7 +983,8 @@ fun AddEmployeeScreen(
             joiningDate,
             designation,
             selectedDepartmentCode,
-            emailSetupLinkEnabled
+            emailSetupLinkEnabled,
+            teamSpecificData
           )
         },
         modifier = Modifier

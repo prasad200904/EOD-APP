@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.SubtleText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -39,7 +41,7 @@ fun UpdateAvailableDialog(
         Surface(
             modifier = modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            color = Color(0xFF14151D),
+            color = Color.White,
             shadowElevation = 8.dp
         ) {
             Column(
@@ -54,7 +56,7 @@ fun UpdateAvailableDialog(
                     modifier = Modifier
                         .size(72.dp)
                         .background(
-                            color = if (updateInfo.isMandatory) Color(0xFFEF4444) else Color(0xFF5B5CE5),
+                            color = if (updateInfo.isMandatory) Color(0xFFEF4444) else CoralPrimary,
                             shape = RoundedCornerShape(16.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -90,7 +92,7 @@ fun UpdateAvailableDialog(
                     Text(
                         text = "Current Version: $currentVersion",
                         fontSize = 14.sp,
-                        color = Color(0xFF9CA3AF)
+                        color = SubtleText
                     )
                 }
 
@@ -113,12 +115,12 @@ fun UpdateAvailableDialog(
                                 text = "What's New",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF9CA3AF)
+                                color = SubtleText
                             )
                             Text(
                                 text = updateInfo.releaseNotes,
                                 fontSize = 14.sp,
-                                color = Color(0xFFD1D5DB),
+                                color = SubtleText,
                                 lineHeight = 20.sp
                             )
                         }
@@ -149,7 +151,7 @@ fun UpdateAvailableDialog(
                             .height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (updateInfo.isMandatory) Color(0xFFEF4444) else Color(0xFF5B5CE5)
+                            containerColor = if (updateInfo.isMandatory) Color(0xFFEF4444) else CoralPrimary
                         )
                     ) {
                         Icon(
@@ -175,7 +177,7 @@ fun UpdateAvailableDialog(
                             Text(
                                 text = "Maybe Later",
                                 fontSize = 14.sp,
-                                color = Color(0xFF9CA3AF)
+                                color = SubtleText
                             )
                         }
                     }
@@ -199,7 +201,7 @@ fun CheckingUpdateDialog(
         Surface(
             modifier = modifier,
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF14151D)
+            color = Color.White
         ) {
             Column(
                 modifier = Modifier.padding(32.dp),
@@ -207,7 +209,7 @@ fun CheckingUpdateDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 CircularProgressIndicator(
-                    color = Color(0xFF5B5CE5),
+                    color = CoralPrimary,
                     modifier = Modifier.size(40.dp)
                 )
                 Text(

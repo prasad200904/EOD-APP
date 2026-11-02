@@ -55,7 +55,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.data.DailyEodEntity
 import com.example.data.EmployeeEntity
-import com.example.ui.theme.EodDarkBackground
+import com.example.ui.theme.WarmCream
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.DarkSlateDeep
+import com.example.ui.theme.SubtleText
+import com.example.ui.theme.WarmCardBorder
 
 data class ProjectTaskItem(
   val id: String = java.util.UUID.randomUUID().toString(),
@@ -168,7 +172,7 @@ fun TodayScreen(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(WarmCream)
   ) {
     LazyColumn(
       modifier = Modifier
@@ -197,7 +201,7 @@ fun TodayScreen(
                 Icon(
                   imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                   contentDescription = "Back to Roster",
-                  tint = Color.White
+                  tint = DarkSlateDeep
                 )
               }
             }
@@ -206,7 +210,7 @@ fun TodayScreen(
               modifier = Modifier
                 .size(42.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF1D4ED8)) // Blue avatar matching screenshot
+                .background(CoralPrimary)
                 .clickable { onAvatarClick() },
               contentAlignment = Alignment.Center
             ) {
@@ -223,12 +227,12 @@ fun TodayScreen(
                 text = currentEmployee?.name ?: "Ravi Kumar",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = DarkSlateDeep
               )
               Text(
                 text = "$teamName · $empCode",
                 fontSize = 12.sp,
-                color = Color(0xFF9CA3AF)
+                color = SubtleText
               )
             }
           }
@@ -240,7 +244,7 @@ fun TodayScreen(
             Icon(
               imageVector = Icons.Default.Notifications,
               contentDescription = "Notifications",
-              tint = Color(0xFF9CA3AF),
+              tint = SubtleText,
               modifier = Modifier.size(24.dp)
             )
           }
@@ -287,13 +291,13 @@ fun TodayScreen(
             text = "Today's EOD",
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = DarkSlateDeep
           )
 
           Text(
             text = "Wed, 16 Sep · Editable till 11 PM",
             fontSize = 12.sp,
-            color = Color(0xFF9CA3AF)
+            color = SubtleText
           )
         }
       }
@@ -304,7 +308,7 @@ fun TodayScreen(
           Text(
             text = "Attendance",
             fontSize = 13.sp,
-            color = Color(0xFF9CA3AF),
+            color = SubtleText,
             fontWeight = FontWeight.Normal
           )
 
@@ -343,7 +347,7 @@ fun TodayScreen(
               icon = Icons.Default.CalendarToday,
               isSelected = isHoliday,
               selectedBg = Color(0xFFE0E7FF),
-              selectedText = Color(0xFF3730A3),
+              selectedText = CoralPrimary,
               modifier = Modifier.weight(1f),
               onClick = { attendanceStatus = "Holiday" }
             )
@@ -361,7 +365,7 @@ fun TodayScreen(
           Text(
             text = "Projects worked on",
             fontSize = 13.sp,
-            color = Color(0xFF9CA3AF),
+            color = SubtleText,
             fontWeight = FontWeight.Normal
           )
 
@@ -369,7 +373,7 @@ fun TodayScreen(
             text = "+ Add project",
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
-            color = Color(0xFF38BDF8),
+            color = CoralPrimary,
             modifier = Modifier
               .clickable { showAddProjectDialog = true }
               .testTag("add_project_button")
@@ -384,8 +388,8 @@ fun TodayScreen(
             .fillMaxWidth()
             .testTag("project_card_$index"),
           shape = RoundedCornerShape(14.dp),
-          color = Color(0xFF14151D),
-          border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF232532))
+          color = Color.White,
+          border = androidx.compose.foundation.BorderStroke(1.dp, WarmCardBorder)
         ) {
           Column(
             modifier = Modifier.padding(16.dp),
@@ -401,7 +405,7 @@ fun TodayScreen(
                 text = item.title,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = DarkSlateDeep
               )
 
               IconButton(
@@ -417,7 +421,7 @@ fun TodayScreen(
                 Icon(
                   imageVector = Icons.Default.DeleteOutline,
                   contentDescription = "Delete project",
-                  tint = Color(0xFF71717A),
+                  tint = SubtleText,
                   modifier = Modifier.size(18.dp)
                 )
               }
@@ -427,12 +431,12 @@ fun TodayScreen(
             Text(
               text = item.description,
               fontSize = 13.sp,
-              color = Color(0xFFD1D5DB),
+              color = DarkSlateDeep,
               lineHeight = 18.sp,
               modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF191A23))
+                .background(Color(0xFFFFF0E8))
                 .padding(12.dp)
             )
 
@@ -448,7 +452,7 @@ fun TodayScreen(
                   isSelected && s == "Completed" -> Color(0xFFD1FAE5) to Color(0xFF065F46)
                   isSelected && s == "Blocked" -> Color(0xFFFEE2E2) to Color(0xFF991B1B)
                   isSelected && s == "In progress" -> Color(0xFFDBEAFE) to Color(0xFF1E40AF)
-                  else -> Color(0xFF191A23) to Color(0xFF71717A)
+                  else -> Color(0xFFF3F4F6) to SubtleText
                 }
 
                 Box(
@@ -506,7 +510,7 @@ fun TodayScreen(
             .testTag("submit_eod_button"),
           shape = RoundedCornerShape(14.dp),
           colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF5B5CE5) // Deep violet purple matching screenshot
+            containerColor = CoralPrimary // Coral primary matching theme
           )
         ) {
           Text(
@@ -533,8 +537,8 @@ fun TodayScreen(
     Dialog(onDismissRequest = { showAddProjectDialog = false }) {
       Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF14151D),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF282A38)),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, WarmCardBorder),
         modifier = Modifier.fillMaxWidth()
       ) {
         Column(
@@ -550,14 +554,14 @@ fun TodayScreen(
               text = "Add Project Work",
               fontSize = 17.sp,
               fontWeight = FontWeight.Bold,
-              color = Color.White
+              color = DarkSlateDeep
             )
 
             IconButton(
               onClick = { showAddProjectDialog = false },
               modifier = Modifier.size(28.dp)
             ) {
-              Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF9CA3AF))
+              Icon(Icons.Default.Close, contentDescription = "Close", tint = SubtleText)
             }
           }
 
@@ -565,16 +569,16 @@ fun TodayScreen(
             value = newProjectTitle,
             onValueChange = { newProjectTitle = it },
             label = { Text("Project Name") },
-            placeholder = { Text("e.g. Model Serving Pipeline", color = Color(0xFF71717A)) },
+            placeholder = { Text("e.g. Model Serving Pipeline", color = SubtleText) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
-              focusedContainerColor = Color(0xFF191A23),
-              unfocusedContainerColor = Color(0xFF191A23),
-              focusedBorderColor = Color(0xFF5B5CE5),
-              unfocusedBorderColor = Color(0xFF282A38),
-              focusedTextColor = Color.White,
-              unfocusedTextColor = Color.White
+              focusedContainerColor = Color.White,
+              unfocusedContainerColor = Color.White,
+              focusedBorderColor = CoralPrimary,
+              unfocusedBorderColor = WarmCardBorder,
+              focusedTextColor = DarkSlateDeep,
+              unfocusedTextColor = DarkSlateDeep
             )
           )
 
@@ -582,18 +586,18 @@ fun TodayScreen(
             value = newProjectDescription,
             onValueChange = { newProjectDescription = it },
             label = { Text("Work Completed & Next Steps") },
-            placeholder = { Text("Describe the specific changes made today...", color = Color(0xFF71717A)) },
+            placeholder = { Text("Describe the specific changes made today...", color = SubtleText) },
             modifier = Modifier
               .fillMaxWidth()
               .height(100.dp),
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
-              focusedContainerColor = Color(0xFF191A23),
-              unfocusedContainerColor = Color(0xFF191A23),
-              focusedBorderColor = Color(0xFF5B5CE5),
-              unfocusedBorderColor = Color(0xFF282A38),
-              focusedTextColor = Color.White,
-              unfocusedTextColor = Color.White
+              focusedContainerColor = Color.White,
+              unfocusedContainerColor = Color.White,
+              focusedBorderColor = CoralPrimary,
+              unfocusedBorderColor = WarmCardBorder,
+              focusedTextColor = DarkSlateDeep,
+              unfocusedTextColor = DarkSlateDeep
             )
           )
 
@@ -606,7 +610,7 @@ fun TodayScreen(
               Box(
                 modifier = Modifier
                   .clip(RoundedCornerShape(10.dp))
-                  .background(if (isSelected) Color(0xFF5B5CE5) else Color(0xFF191A23))
+                  .background(if (isSelected) CoralPrimary else Color(0xFFF3F4F6))
                   .clickable { newProjectStatus = s }
                   .padding(horizontal = 12.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
@@ -615,7 +619,7 @@ fun TodayScreen(
                   text = s,
                   fontSize = 11.sp,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                  color = Color.White
+                  color = if (isSelected) Color.White else DarkSlateDeep
                 )
               }
             }
@@ -638,7 +642,7 @@ fun TodayScreen(
               .fillMaxWidth()
               .height(46.dp),
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5B5CE5))
+            colors = ButtonDefaults.buttonColors(containerColor = CoralPrimary)
           ) {
             Text("Add to Today's EOD", fontWeight = FontWeight.Bold, color = Color.White)
           }
@@ -657,8 +661,8 @@ private fun StatMetricCard(
   Surface(
     modifier = modifier,
     shape = RoundedCornerShape(12.dp),
-    color = Color(0xFF14151D),
-    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF232532))
+    color = Color.White,
+    border = androidx.compose.foundation.BorderStroke(1.dp, WarmCardBorder)
   ) {
     Column(
       modifier = Modifier.padding(vertical = 14.dp, horizontal = 10.dp),
@@ -669,12 +673,12 @@ private fun StatMetricCard(
         text = value,
         fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
-        color = Color.White
+        color = DarkSlateDeep
       )
       Text(
         text = label,
         fontSize = 11.sp,
-        color = Color(0xFF9CA3AF)
+        color = SubtleText
       )
     }
   }
@@ -693,10 +697,10 @@ private fun AttendanceButton(
   Box(
     modifier = modifier
       .clip(RoundedCornerShape(10.dp))
-      .background(if (isSelected) selectedBg else Color(0xFF14151D))
+      .background(if (isSelected) selectedBg else Color.White)
       .border(
         width = 1.dp,
-        color = if (isSelected) Color.Transparent else Color(0xFF232532),
+        color = if (isSelected) Color.Transparent else WarmCardBorder,
         shape = RoundedCornerShape(10.dp)
       )
       .clickable { onClick() }
@@ -710,14 +714,14 @@ private fun AttendanceButton(
       Icon(
         imageVector = icon,
         contentDescription = title,
-        tint = if (isSelected) selectedText else Color(0xFF9CA3AF),
+        tint = if (isSelected) selectedText else SubtleText,
         modifier = Modifier.size(18.dp)
       )
       Text(
         text = title,
         fontSize = 13.sp,
         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-        color = if (isSelected) selectedText else Color(0xFF9CA3AF)
+        color = if (isSelected) selectedText else SubtleText
       )
     }
   }

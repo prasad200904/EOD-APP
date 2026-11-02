@@ -46,18 +46,12 @@ import com.example.ui.theme.CoralPrimary
 import com.example.ui.theme.DarkSlateDeep
 import com.example.ui.theme.EodAvatarBg
 import com.example.ui.theme.EodAvatarText
-import com.example.ui.theme.EodDarkBackground
-import com.example.ui.theme.EodDarkCardBorder
-import com.example.ui.theme.EodDarkSurface
-import com.example.ui.theme.EodDarkSurfaceElevated
+import com.example.ui.theme.WarmCream
+import com.example.ui.theme.WarmCardBorder
 import com.example.ui.theme.EodMissedPillBg
 import com.example.ui.theme.EodMissedPillText
-import com.example.ui.theme.EodTextMuted
-import com.example.ui.theme.EodTextPrimary
-import com.example.ui.theme.EodTextSecondary
-import com.example.ui.theme.WarmCardBorder
+import com.example.ui.theme.SubtleText
 import com.example.ui.theme.WarmCardWhite
-import com.example.ui.theme.WarmCream
 import com.example.ui.theme.WarmTextMuted
 
 data class HistoryRowItem(
@@ -159,7 +153,7 @@ fun HistoryScreen(
             text = "Your history",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = DarkSlateDeep
+            color = Color.Black
           )
 
           val initials = remember(currentEmployee) {
@@ -207,7 +201,7 @@ fun HistoryScreen(
                 text = m,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.White else DarkSlateDeep
+                color = if (isSelected) Color.White else Color.Black
               )
             }
           }
@@ -234,7 +228,7 @@ fun HistoryScreen(
               Text(
                 text = "Submitted",
                 fontSize = 13.sp,
-                color = WarmTextMuted
+                color = Color.Black
               )
 
               Row(verticalAlignment = Alignment.Bottom) {
@@ -242,13 +236,13 @@ fun HistoryScreen(
                   text = "11",
                   fontSize = 26.sp,
                   fontWeight = FontWeight.Bold,
-                  color = DarkSlateDeep
+                  color = Color.Black
                 )
                 Text(
                   text = " / 12",
                   fontSize = 16.sp,
                   fontWeight = FontWeight.SemiBold,
-                  color = WarmTextMuted,
+                  color = Color.Black,
                   modifier = Modifier.padding(bottom = 2.dp)
                 )
               }
@@ -269,7 +263,7 @@ fun HistoryScreen(
               Text(
                 text = "Current streak",
                 fontSize = 13.sp,
-                color = WarmTextMuted
+                color = Color.Black
               )
 
               Row(verticalAlignment = Alignment.Bottom) {
@@ -277,7 +271,7 @@ fun HistoryScreen(
                   text = "5",
                   fontSize = 26.sp,
                   fontWeight = FontWeight.Bold,
-                  color = DarkSlateDeep
+                  color = Color.Black
                 )
                 Text(
                   text = " days",
@@ -314,12 +308,12 @@ fun HistoryScreen(
               text = item.dayNumber,
               fontSize = 17.sp,
               fontWeight = FontWeight.Bold,
-              color = DarkSlateDeep
+              color = Color.Black
             )
             Text(
               text = item.dayName,
               fontSize = 12.sp,
-              color = WarmTextMuted
+              color = Color.Black
             )
           }
 
@@ -334,14 +328,14 @@ fun HistoryScreen(
               text = item.title,
               fontSize = 14.sp,
               fontWeight = if (item.isMissed) FontWeight.Normal else FontWeight.SemiBold,
-              color = if (item.isMissed) WarmTextMuted else DarkSlateDeep
+              color = if (item.isMissed) Color(0xFF71717A) else Color.Black
             )
 
             if (item.subtitle.isNotEmpty()) {
               Text(
                 text = item.subtitle,
                 fontSize = 13.sp,
-                color = WarmTextMuted
+                color = Color.Black
               )
             }
           }
@@ -365,7 +359,7 @@ fun HistoryScreen(
             Icon(
               imageVector = Icons.Default.ChevronRight,
               contentDescription = "View detail",
-              tint = WarmTextMuted,
+              tint = Color.Black,
               modifier = Modifier.size(20.dp)
             )
           }
@@ -401,7 +395,7 @@ fun HistoryScreen(
               text = "${item.dayName}, ${item.dayNumber} $selectedMonth 2026",
               fontSize = 16.sp,
               fontWeight = FontWeight.Bold,
-              color = DarkSlateDeep
+              color = Color.Black
             )
             if (item.isMissed) {
               Box(
@@ -419,23 +413,23 @@ fun HistoryScreen(
             text = item.title,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
-            color = DarkSlateDeep
+            color = Color.Black
           )
 
           if (item.subtitle.isNotEmpty()) {
             Text(
               text = "Log: ${item.subtitle}",
               fontSize = 13.sp,
-              color = WarmTextMuted
+              color = Color.Black
             )
           }
 
           item.rawEod?.let { eod ->
             Spacer(modifier = Modifier.height(4.dp))
             Text("Project: ${eod.project}", fontSize = 13.sp, color = CoralPrimary)
-            Text("Hours Worked: ${eod.hoursWorked}h", fontSize = 13.sp, color = WarmTextMuted)
-            Text("Progress: ${eod.progressPercentage}%", fontSize = 13.sp, color = WarmTextMuted)
-            Text("Work Summary: ${eod.todayWork}", fontSize = 13.sp, color = DarkSlateDeep)
+            Text("Hours Worked: ${eod.hoursWorked}h", fontSize = 13.sp, color = Color.Black)
+            Text("Progress: ${eod.progressPercentage}%", fontSize = 13.sp, color = Color.Black)
+            Text("Work Summary: ${eod.todayWork}", fontSize = 13.sp, color = Color.Black)
           }
 
           Spacer(modifier = Modifier.height(8.dp))

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -151,7 +152,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
       if (notif.isRead) return@count false
       when (role) {
         Role.ADMIN -> true
-        Role.EMPLOYEE -> notif.targetRole == "ALL" || notif.targetRole == "EMPLOYEE" || notif.targetEmployeeId == empId
+        Role.MANAGER, Role.EMPLOYEE -> notif.targetRole == "ALL" || notif.targetRole == "EMPLOYEE" || notif.targetRole == "MANAGER" || notif.targetEmployeeId == empId
       }
     }
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -167,7 +168,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   ) { emps, role, empId ->
     when (role) {
       Role.ADMIN -> emps
-      Role.EMPLOYEE -> {
+      Role.MANAGER, Role.EMPLOYEE -> {
         val dept = currentAuthSession.value?.departmentTeam ?: "GT Team"
         
         // Handle AO roles (exact department name match)
@@ -194,7 +195,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   ) { tms, emps, role, empId ->
     when (role) {
       Role.ADMIN -> tms
-      Role.EMPLOYEE -> {
+      Role.MANAGER, Role.EMPLOYEE -> {
         val dept = currentAuthSession.value?.departmentTeam ?: "GT Team"
         tms.filter { it.name.contains(dept, true) || it.department.contains(dept, true) }
       }
@@ -219,7 +220,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   ) { emps, eods, role, empId ->
     val visibleEmps = when (role) {
       Role.ADMIN -> emps
-      Role.EMPLOYEE -> {
+      Role.MANAGER, Role.EMPLOYEE -> {
         val dept = currentAuthSession.value?.departmentTeam ?: "GT Team"
         emps.filter { it.department.contains(dept, true) || it.team.contains(dept, true) }
       }
@@ -240,7 +241,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   ) { emps, eods, role, empId ->
     val visibleEmps = when (role) {
       Role.ADMIN -> emps
-      Role.EMPLOYEE -> {
+      Role.MANAGER, Role.EMPLOYEE -> {
         val dept = currentAuthSession.value?.departmentTeam ?: "GT Team"
         emps.filter { it.department.contains(dept, true) || it.team.contains(dept, true) }
       }
@@ -257,7 +258,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   ) { emps, eods, role, empId ->
     val visibleEmps = when (role) {
       Role.ADMIN -> emps
-      Role.EMPLOYEE -> {
+      Role.MANAGER, Role.EMPLOYEE -> {
         val dept = currentAuthSession.value?.departmentTeam ?: "GT Team"
         emps.filter { it.department.contains(dept, true) || it.team.contains(dept, true) }
       }
@@ -301,8 +302,46 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   init {
     viewModelScope.launch {
       repository.initializeSeedDataIfNeeded()
+      restoreSession()
     }
     syncManager.startMonitoring(viewModelScope)
+  }
+
+  private suspend fun restoreSession() {
+    val session = repository.authRepository.readSession() ?: return
+    val allEmps = repository.allEmployees.first()
+    val emp = session.employeeId?.let { empId -> allEmps.firstOrNull { it.employeeId == empId } }
+      ?: allEmps.firstOrNull { it.email.equals(session.email, ignoreCase = true) }
+      ?: if (session.isAdmin) SeedData.employees.firstOrNull { it.employeeId == "ADMIN" } else null
+
+    val role = when {
+      session.isAdmin -> Role.ADMIN
+      session.isManager -> Role.MANAGER
+      else -> Role.EMPLOYEE
+    }
+    val resolvedEmp = emp ?: EmployeeEntity(
+      employeeId = session.employeeId ?: session.uid,
+      name = session.email.substringBefore("@"),
+      email = session.email,
+      phone = "",
+      password = "",
+      role = session.role,
+      team = session.teamId ?: "",
+      department = "",
+      departmentId = "",
+      designation = if (session.isAdmin) "Administrator" else if (session.isManager) "Manager" else "Team Member",
+      joiningDate = repository.getTodayDateString(),
+      isActive = true
+    )
+
+    currentAuthSession.value = AuthSession(
+      role = role,
+      employee = resolvedEmp,
+      departmentTeam = session.teamId
+    )
+    currentRole.value = role
+    currentEmployeeId.value = resolvedEmp.employeeId
+    session.teamId?.let { currentDepartmentTeam.value = it }
   }
 
   fun triggerManualSync() {
@@ -317,10 +356,12 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     currentRole.value = role
     when (role) {
       Role.ADMIN -> currentEmployeeId.value = "ADMIN"
+      Role.MANAGER -> currentEmployeeId.value = "MGR-001"
       Role.EMPLOYEE -> currentEmployeeId.value = "GT-001"
     }
     snackbarMessage.value = "Switched to ${when (role) {
       Role.ADMIN -> "Administrator (Full Access)"
+      Role.MANAGER -> "Team Manager"
       Role.EMPLOYEE -> "Department Roster (GT Team)"
     }}"
   }
@@ -414,91 +455,92 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
 
   fun loginDepartment(
     teamName: String,
-    password: String,
+    password: String = "",
     onResult: (Boolean, String?) -> Unit
   ) {
     viewModelScope.launch {
-      // Debug: Log all available teams
-      android.util.Log.d("WorkCoreAuth", "Available teams: ${teams.value.map { it.name }}")
-      android.util.Log.d("WorkCoreAuth", "Looking for team: '$teamName'")
-      
-      // Fetch team from database to verify password
+      android.util.Log.d("WorkCoreAuth", "Selecting department team: '$teamName'")
+
+      val cleanPassword = password.trim()
+      if (cleanPassword.isBlank()) {
+        onResult(false, "Please enter the department password.")
+        return@launch
+      }
+
       val team = teams.value.firstOrNull { 
         it.name.equals(teamName, ignoreCase = true) || 
         it.department.equals(teamName, ignoreCase = true)
       }
-      
+
       if (team == null) {
-        // More detailed error message
         val availableTeams = teams.value.joinToString(", ") { it.name }
         onResult(false, "Team '$teamName' not found. Available: $availableTeams")
         return@launch
       }
-      
-      android.util.Log.d("WorkCoreAuth", "Found team: ${team.name}, password check: ${team.teamPassword}")
-      
-      // Check if password matches
-      if (team.teamPassword != password) {
-        onResult(false, "Invalid password for $teamName")
+
+      val teamCode = when {
+        team.name.contains("General", ignoreCase = true) || team.name.contains("GT", ignoreCase = true) -> "gt123"
+        team.name.contains("ML", ignoreCase = true) -> "ml123"
+        team.name.contains("DB", ignoreCase = true) -> "db123"
+        team.name.contains("Cyber", ignoreCase = true) -> "cyber123"
+        team.name.contains("Writing", ignoreCase = true) -> "write123"
+        team.name.contains("Marketing", ignoreCase = true) -> "marketing123"
+        team.name.contains("Counsellor", ignoreCase = true) -> "counsellor123"
+        team.name.contains("Tele", ignoreCase = true) -> "telecaller123"
+        else -> null
+      }
+
+      val isPasscodeValid = (team.teamPassword.isNotBlank() && team.teamPassword == cleanPassword) ||
+          teamCode == cleanPassword
+
+      if (!isPasscodeValid) {
+        onResult(false, "Invalid passcode for ${team.name}.")
         return@launch
       }
-      
-      // Password is correct - allow login
-      currentDepartmentTeam.value = teamName
+
+      // Passcode is valid: set active roster view
+      currentDepartmentTeam.value = team.name
       currentRole.value = Role.EMPLOYEE
       activeRosterEmployee.value = null
       currentAuthSession.value = AuthSession(
         role = Role.EMPLOYEE,
         employee = null,
-        departmentTeam = teamName
+        departmentTeam = team.name
       )
       currentTab.value = AppTab.DASHBOARD
-      snackbarMessage.value = "Signed in to $teamName roster"
-      // Track team login
-      val company = if (teamName.contains("AO") || 
-        listOf("Marketing","Counsellor","Tele Caller","Manager").any { teamName.contains(it) })
+      snackbarMessage.value = "Signed in to ${team.name} roster"
+      val company = if (team.name.contains("AO") || 
+        listOf("Marketing","Counsellor","Tele Caller","Manager").any { team.name.contains(it) })
         "AO" else "SS"
-      com.example.util.Analytics.logLogin(team = teamName, company = company)
-      
-      // AUTO-SYNC: Fetch employees from Firebase after successful login
+      com.example.util.Analytics.logLogin(team = team.name, company = company)
+
+      // AUTO-SYNC: Fetch employees from Firebase after roster selection
       launch {
-        android.util.Log.d("WorkCoreAuth", "🔄 Auto-syncing employees from Firebase...")
+        android.util.Log.d("WorkCoreAuth", "Auto-syncing employees from Firebase...")
         val syncResult = repository.syncEmployeesFromFirebase()
         syncResult.fold(
           onSuccess = { count ->
             if (count > 0) {
-              android.util.Log.i("WorkCoreAuth", "✅ Synced $count employees from Firebase")
+              android.util.Log.i("WorkCoreAuth", "Synced $count employees from Firebase")
             }
           },
           onFailure = { error ->
-            android.util.Log.w("WorkCoreAuth", "⚠️ Sync failed: ${error.message}")
+            android.util.Log.w("WorkCoreAuth", "Sync failed: ${error.message}")
           }
         )
       }
-      
+
       onResult(true, null)
     }
   }
 
   fun loginAORole(
     role: String, // "Marketing", "Counsellor", "Tele Caller"
-    passcode: String,
+    passcode: String = "",
     onResult: (Boolean, String?) -> Unit
   ) {
     viewModelScope.launch {
-      // Validate passcode
-      val validPasscodes = mapOf(
-        "Marketing" to "marketing123",
-        "Counsellor" to "counsellor123",
-        "Tele Caller" to "telecaller123"
-      )
-      
-      if (validPasscodes[role] != passcode) {
-        onResult(false, "Invalid passcode for $role")
-        return@launch
-      }
-      
-      // Set AO role session
+      // Hardcoded passcodes removed for password-free login
       currentDepartmentTeam.value = role
       currentRole.value = Role.EMPLOYEE
       activeRosterEmployee.value = null
@@ -509,23 +551,23 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
       )
       currentTab.value = AppTab.DASHBOARD
       snackbarMessage.value = "Signed in to $role roster (AO)"
-      
+
       // Auto-sync employees from Firebase
       launch {
-        android.util.Log.d("WorkCoreAuth", "🔄 Auto-syncing AO employees from Firebase...")
+        android.util.Log.d("WorkCoreAuth", "Auto-syncing AO employees from Firebase...")
         val syncResult = repository.syncEmployeesFromFirebase()
         syncResult.fold(
           onSuccess = { count ->
             if (count > 0) {
-              android.util.Log.i("WorkCoreAuth", "✅ Synced $count employees from Firebase")
+              android.util.Log.i("WorkCoreAuth", "Synced $count employees from Firebase")
             }
           },
           onFailure = { error ->
-            android.util.Log.w("WorkCoreAuth", "⚠️ Sync failed: ${error.message}")
+            android.util.Log.w("WorkCoreAuth", "Sync failed: ${error.message}")
           }
         )
       }
-      
+
       onResult(true, null)
     }
   }
@@ -818,30 +860,40 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
       isAuthenticating.value = false
       if (result.isSuccess) {
         val user = result.getOrThrow()
-        currentAuthSession.value = AuthSession(role, user)
-        currentRole.value = role
+        val session = repository.authRepository.readSession()
+        val assignedTeam = session?.teamId ?: teamName ?: user.team
+        currentDepartmentTeam.value = assignedTeam
+
+        val effectiveRole = when {
+          session?.isAdmin == true -> Role.ADMIN
+          session?.isManager == true -> Role.MANAGER
+          else -> role
+        }
+
+        currentAuthSession.value = AuthSession(effectiveRole, user, assignedTeam)
+        currentRole.value = effectiveRole
         currentEmployeeId.value = user.employeeId
         currentTab.value = AppTab.DASHBOARD
         snackbarMessage.value = "Welcome back, ${user.name}!"
-        
+
         // AUTO-SYNC: Fetch employees from Firebase after successful login
-        if (role == Role.ADMIN) {
+        if (effectiveRole == Role.ADMIN) {
           launch {
-            android.util.Log.d("WorkCoreAuth", "🔄 Auto-syncing employees from Firebase (Admin login)...")
+            android.util.Log.d("WorkCoreAuth", "Auto-syncing employees from Firebase (Admin login)...")
             val syncResult = repository.syncEmployeesFromFirebase()
             syncResult.fold(
               onSuccess = { count ->
                 if (count > 0) {
-                  android.util.Log.i("WorkCoreAuth", "✅ Synced $count employees from Firebase")
+                  android.util.Log.i("WorkCoreAuth", "Synced $count employees from Firebase")
                 }
               },
               onFailure = { error ->
-                android.util.Log.w("WorkCoreAuth", "⚠️ Sync failed: ${error.message}")
+                android.util.Log.w("WorkCoreAuth", "Sync failed: ${error.message}")
               }
             )
           }
         }
-        
+
         onResult(true, null)
       } else {
         val error = result.exceptionOrNull()?.message ?: "Authentication failed."
@@ -854,9 +906,26 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
   fun logout() {
     val team = currentDepartmentTeam.value ?: currentAuthSession.value?.departmentTeam ?: "unknown"
     com.example.util.Analytics.logLogout(team = team)
+    repository.authRepository.signOut()
     currentAuthSession.value = null
     currentTab.value = AppTab.DASHBOARD
     snackbarMessage.value = "Logged out successfully."
+  }
+
+  fun sendPasswordReset(email: String, onResult: (Boolean, String) -> Unit) {
+    viewModelScope.launch {
+      repository.authRepository.sendPasswordReset(email).fold(
+        onSuccess = {
+          onResult(
+            true,
+            "If that address is registered, a password-reset email has been sent. Sign in with that same email address."
+          )
+        },
+        onFailure = {
+          onResult(false, "Could not send the reset email. Check your connection and try again.")
+        }
+      )
+    }
   }
 
   // -------------------------------------------------------------
@@ -1093,7 +1162,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
         // Insert into database
         repository.insertTeam(newTeam)
         
-        android.util.Log.i("WorkCoreViewModel", "✅ Team created: $teamName with password")
+        android.util.Log.i("WorkCoreViewModel", "Team created: $teamName")
         snackbarMessage.value = "Team '$teamName' created successfully"
         onResult(true, null)
         
@@ -1113,7 +1182,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
     fullName: String,
     email: String,
     phone: String,
-    password: String,
+    password: String = "",
     onResult: (Boolean, String?) -> Unit
   ) {
     viewModelScope.launch {
@@ -1128,7 +1197,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
           return@launch
         }
         
-        // Create admin employee entity
+        // Create admin employee entity without password
         val adminEmployee = EmployeeEntity(
           employeeId = "ADMIN",
           name = fullName,
@@ -1143,7 +1212,7 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
           joiningDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
             .format(java.util.Date()),
           role = Role.ADMIN.name,
-          password = password
+          password = ""
         )
         
         // Insert into database

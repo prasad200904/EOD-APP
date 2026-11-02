@@ -8,6 +8,7 @@ import android.content.Intent
 import android.widget.Toast
 import com.example.util.FileDownloadHelper
 import com.example.util.DownloadResult
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.foundation.background
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CorporateFare
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -211,7 +213,7 @@ fun SubmitEodDialog(
               modifier = Modifier
                 .size(38.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xFF21005D)),
+                .background(DarkSlateDeep),
               contentAlignment = Alignment.Center
             ) {
               Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
@@ -221,7 +223,7 @@ fun SubmitEodDialog(
                 text = if (existingEod != null) "Edit EOD Form" else "EOD Form",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF21005D)
+                color = DarkSlateDeep
               )
               Text(
                 text = "Daily work status submission",
@@ -251,7 +253,7 @@ fun SubmitEodDialog(
               date = it
               errorMessage = null
             },
-            label = { Text("Date *") },
+            label = { Text("Date *", color = Color(0xFF2C3E50)) },
             placeholder = { Text("YYYY-MM-DD") },
             singleLine = true,
             leadingIcon = {
@@ -280,7 +282,9 @@ fun SubmitEodDialog(
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
               focusedBorderColor = WorkPrimary,
-              unfocusedBorderColor = WorkOutline
+              unfocusedBorderColor = WorkOutline,
+              focusedLabelColor = Color(0xFF2C3E50),
+              unfocusedLabelColor = Color(0xFF6B7280)
             )
           )
 
@@ -292,7 +296,7 @@ fun SubmitEodDialog(
                 empName = it
                 errorMessage = null
               },
-              label = { Text("Emp-Name *") },
+              label = { Text("Emp-Name *", color = Color(0xFF2C3E50)) },
               placeholder = { Text("Enter employee name...") },
               singleLine = true,
               leadingIcon = {
@@ -311,7 +315,9 @@ fun SubmitEodDialog(
               shape = RoundedCornerShape(12.dp),
               colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = WorkPrimary,
-                unfocusedBorderColor = WorkOutline
+                unfocusedBorderColor = WorkOutline,
+                focusedLabelColor = Color(0xFF2C3E50),
+                unfocusedLabelColor = Color(0xFF6B7280)
               )
             )
 
@@ -342,7 +348,7 @@ fun SubmitEodDialog(
               project = it
               errorMessage = null
             },
-            label = { Text("Assigned Project (Manual Typing) *") },
+            label = { Text("Assigned Project (Manual Typing) *", color = Color(0xFF2C3E50)) },
             placeholder = { Text("Type assigned project name...") },
             singleLine = true,
             leadingIcon = {
@@ -354,7 +360,9 @@ fun SubmitEodDialog(
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
               focusedBorderColor = WorkPrimary,
-              unfocusedBorderColor = WorkOutline
+              unfocusedBorderColor = WorkOutline,
+              focusedLabelColor = Color(0xFF2C3E50),
+              unfocusedLabelColor = Color(0xFF6B7280)
             )
           )
 
@@ -369,7 +377,7 @@ fun SubmitEodDialog(
                 text = "Status of Work *",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF21005D)
+                color = DarkSlateDeep
               )
               StatusBadge(status = workStatus)
             }
@@ -404,7 +412,7 @@ fun SubmitEodDialog(
                       "On Leave" -> Color(0xFFFFE0B2)
                       else -> Color(0xFFE0E0E0)
                     },
-                    selectedLabelColor = Color(0xFF1D1B20)
+                    selectedLabelColor = DarkSlateDeep
                   )
                 )
               }
@@ -514,7 +522,7 @@ fun SubmitEodDialog(
               )
             },
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF21005D)),
+            colors = ButtonDefaults.buttonColors(containerColor = DarkSlateDeep),
             modifier = Modifier.testTag("submit_eod_button")
           ) {
             Text(if (existingEod != null) "Update EOD" else "Submit EOD", fontWeight = FontWeight.Bold)
@@ -569,7 +577,7 @@ fun EmployeeDetailDialog(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
               UserAvatar(name = employee.name, size = 44)
               Column {
-                Text(employee.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                Text(employee.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
                 Text(
                   "${employee.employeeId} · ${employee.designation} · ${employee.department} (${employee.team})",
                   fontSize = 12.sp,
@@ -626,7 +634,7 @@ fun EmployeeDetailDialog(
                   count = "${metrics?.submissionRate ?: 0}%",
                   subtitle = "${metrics?.submittedEods ?: 0} of ${metrics?.totalExpectedEods ?: 0} days",
                   backgroundColor = Color(0xFFF3E7FF),
-                  textColor = Color(0xFF21005D),
+                  textColor = DarkSlateDeep,
                   borderColor = WorkOutlineVariant,
                   modifier = Modifier.weight(1f)
                 )
@@ -635,7 +643,7 @@ fun EmployeeDetailDialog(
                   count = "${metrics?.avgHours ?: 0.0}h",
                   subtitle = "Weekly ~${metrics?.weeklyAvgHours ?: 0.0}h",
                   backgroundColor = Color(0xFFE8F5E9),
-                  textColor = Color(0xFF1B5E20),
+                  textColor = Color(0xFF10B981),
                   borderColor = WorkOutlineVariant,
                   modifier = Modifier.weight(1f)
                 )
@@ -736,7 +744,7 @@ fun EmployeeDetailDialog(
                   metrics.objectiveInsights.forEach { insight ->
                     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                       Text("•", color = WorkPrimary, fontWeight = FontWeight.Bold)
-                      Text(insight, fontSize = 12.sp, color = Color(0xFF1D1B20), lineHeight = 16.sp)
+                      Text(insight, fontSize = 12.sp, color = DarkSlateDeep, lineHeight = 16.sp)
                     }
                   }
                 }
@@ -785,7 +793,7 @@ fun EmployeeDetailDialog(
                   verticalAlignment = Alignment.CenterVertically
                 ) {
                   Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(eod.date, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF21005D))
+                    Text(eod.date, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DarkSlateDeep)
                     Text("(${eod.submissionTime})", fontSize = 11.sp, color = Color(0xFF79747E))
                   }
                   Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -813,7 +821,7 @@ fun EmployeeDetailDialog(
                 Text(
                   text = eod.todayWork,
                   fontSize = 12.sp,
-                  color = Color(0xFF1D1B20)
+                  color = DarkSlateDeep
                 )
 
                 Row(
@@ -891,7 +899,7 @@ fun ExportReportDialog(
               }}",
               fontSize = 18.sp,
               fontWeight = FontWeight.Bold,
-              color = Color(0xFF21005D)
+              color = DarkSlateDeep
             )
             Text(
               text = if (isExcel) "Format: Excel Compatible ($ext)" else "Format: CSV Standard ($ext)",
@@ -921,7 +929,7 @@ fun ExportReportDialog(
               fontWeight = FontWeight.Bold,
               color = Color(0xFF79747E)
             )
-            Text("File Name: $fileName", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF21005D))
+            Text("File Name: $fileName", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
             Text("Size: ${(reportContent.toByteArray().size / 1024).coerceAtLeast(1)} KB", fontSize = 12.sp, color = Color(0xFF49454F))
             
             Text(
@@ -954,7 +962,7 @@ fun ExportReportDialog(
                 text = reportContent,
                 fontSize = 11.sp,
                 lineHeight = 16.sp,
-                color = Color(0xFF1D1B20),
+                color = DarkSlateDeep,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
               )
             }
@@ -977,7 +985,7 @@ fun ExportReportDialog(
                 text = if (res.success) "✓ File Downloaded Directly to Downloads!" else "✕ Download Failed",
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
-                color = if (res.success) Color(0xFF1B5E20) else Color(0xFFB71C1C)
+                color = if (res.success) Color(0xFF10B981) else Color(0xFFB71C1C)
               )
               Text(
                 text = if (res.success) "Saved as: ${res.fileName}" else (res.error ?: "Unknown error"),
@@ -989,7 +997,7 @@ fun ExportReportDialog(
                   Button(
                     onClick = { FileDownloadHelper.openDownloadedFile(context, res) },
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B5E20))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
                   ) {
                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
@@ -1034,7 +1042,7 @@ fun ExportReportDialog(
             },
             modifier = Modifier.weight(1.3f),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF21005D))
+            colors = ButtonDefaults.buttonColors(containerColor = DarkSlateDeep)
           ) {
             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
@@ -1116,7 +1124,7 @@ fun CreateOrEditTeamDialog(
             text = if (teamToEdit == null) "Create New Team" else "Edit Team (${teamToEdit.teamId})",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF21005D)
+            color = DarkSlateDeep
           )
           IconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF49454F))
@@ -1127,7 +1135,7 @@ fun CreateOrEditTeamDialog(
 
         // Team Name
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Team Name *", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+          Text("Team Name *", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
           OutlinedTextField(
             value = name,
             onValueChange = { name = it },
@@ -1140,14 +1148,14 @@ fun CreateOrEditTeamDialog(
 
         // Department
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Department *", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+          Text("Department *", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
           Box {
             OutlinedButton(
               onClick = { departmentMenuOpen = true },
               modifier = Modifier.fillMaxWidth(),
               shape = RoundedCornerShape(10.dp)
             ) {
-              Text(department, modifier = Modifier.weight(1f), textAlign = TextAlign.Start, color = Color(0xFF1D1B20))
+              Text(department, modifier = Modifier.weight(1f), textAlign = TextAlign.Start, color = DarkSlateDeep)
               Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
             }
             DropdownMenu(
@@ -1169,7 +1177,7 @@ fun CreateOrEditTeamDialog(
 
         // Assigned Manager
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Assign Manager *", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+          Text("Assign Manager *", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
           Box {
             OutlinedButton(
               onClick = { managerMenuOpen = true },
@@ -1182,7 +1190,7 @@ fun CreateOrEditTeamDialog(
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 UserAvatar(name = selectedManager.name, size = 24.dp)
-                Text("${selectedManager.name} (${selectedManager.designation})", color = Color(0xFF1D1B20), fontSize = 12.sp)
+                Text("${selectedManager.name} (${selectedManager.designation})", color = DarkSlateDeep, fontSize = 12.sp)
               }
               Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -1210,7 +1218,7 @@ fun CreateOrEditTeamDialog(
 
         // Projects / Work Areas
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Assigned Projects / Work Areas", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+          Text("Assigned Projects / Work Areas", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
           OutlinedTextField(
             value = projects,
             onValueChange = { projects = it },
@@ -1222,7 +1230,7 @@ fun CreateOrEditTeamDialog(
 
         // Description
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Description", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+          Text("Description", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
           OutlinedTextField(
             value = description,
             onValueChange = { description = it },
@@ -1308,7 +1316,7 @@ fun MoveEmployeeDialog(
             text = "Transfer Team Member",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF21005D)
+            color = DarkSlateDeep
           )
           IconButton(onClick = onDismiss) {
             Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF49454F))
@@ -1319,7 +1327,7 @@ fun MoveEmployeeDialog(
 
         // Select Employee
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Select Member", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+          Text("Select Member", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
           Box {
             OutlinedButton(
               onClick = { empMenuOpen = true },
@@ -1332,7 +1340,7 @@ fun MoveEmployeeDialog(
                 verticalAlignment = Alignment.CenterVertically
               ) {
                 UserAvatar(name = selectedEmp.name, size = 24.dp)
-                Text("${selectedEmp.name} (Current: ${selectedEmp.team})", color = Color(0xFF1D1B20), fontSize = 12.sp)
+                Text("${selectedEmp.name} (Current: ${selectedEmp.team})", color = DarkSlateDeep, fontSize = 12.sp)
               }
               Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -1360,14 +1368,14 @@ fun MoveEmployeeDialog(
 
         // Select New Team
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("New Assigned Team", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D1B20))
+          Text("New Assigned Team", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DarkSlateDeep)
           Box {
             OutlinedButton(
               onClick = { teamMenuOpen = true },
               modifier = Modifier.fillMaxWidth(),
               shape = RoundedCornerShape(10.dp)
             ) {
-              Text(selectedTeam, modifier = Modifier.weight(1f), textAlign = TextAlign.Start, color = Color(0xFF1D1B20))
+              Text(selectedTeam, modifier = Modifier.weight(1f), textAlign = TextAlign.Start, color = DarkSlateDeep)
               Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
             }
             DropdownMenu(
@@ -1458,7 +1466,7 @@ fun NotificationCenterDialog(
                 text = "Notifications & Alerts",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF21005D)
+                color = DarkSlateDeep
               )
               Text(
                 text = "${notifications.count { !it.isRead }} unread alerts",
@@ -1495,7 +1503,7 @@ fun NotificationCenterDialog(
               label = { Text(f, fontSize = 11.sp) },
               colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = WorkPrimaryContainer,
-                selectedLabelColor = Color(0xFF21005D)
+                selectedLabelColor = DarkSlateDeep
               )
             )
           }
@@ -1562,7 +1570,7 @@ fun NotificationCenterDialog(
                   Text(
                     text = notif.message,
                     fontSize = 12.sp,
-                    color = Color(0xFF1D1B20)
+                    color = DarkSlateDeep
                   )
                   if (notif.targetTeam.isNotBlank()) {
                     Text(
@@ -1610,9 +1618,7 @@ fun AddEmployeeByManagerDialog(
 ) {
   var name by remember { mutableStateOf("") }
   var employeeId by remember { mutableStateOf("") }
-  var password by remember { mutableStateOf("") }
-  var confirmPassword by remember { mutableStateOf("") }
-  var passwordVisible by remember { mutableStateOf(false) }
+  var email by remember { mutableStateOf("") }
   var localError by remember { mutableStateOf<String?>(null) }
 
   Dialog(
@@ -1656,7 +1662,7 @@ fun AddEmployeeByManagerDialog(
                 text = "Add Employee Account",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF21005D)
+                color = DarkSlateDeep
               )
               Text(
                 text = "Team: ${manager.team} (Managed by ${manager.name})",
@@ -1751,59 +1757,32 @@ fun AddEmployeeByManagerDialog(
           shape = RoundedCornerShape(12.dp),
           colors = OutlinedTextFieldDefaults.colors(
             disabledBorderColor = WorkOutlineVariant,
-            disabledTextColor = Color(0xFF1D1B20),
+            disabledTextColor = DarkSlateDeep,
             disabledLabelColor = Color(0xFF49454F)
           )
         )
 
-        // Password
+        // Email
         OutlinedTextField(
-          value = password,
+          value = email,
           onValueChange = {
-            password = it
+            email = it
             localError = null
           },
-          label = { Text("Password *") },
+          label = { Text("Work Email *") },
+          placeholder = { Text("e.g. employee@company.com") },
           leadingIcon = {
-            Icon(Icons.Default.Lock, contentDescription = null, tint = WorkPrimary)
+            Icon(Icons.Default.Email, contentDescription = null, tint = WorkPrimary)
           },
-          trailingIcon = {
-            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-              Icon(
-                if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                contentDescription = null
-              )
-            }
-          },
-          visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
           singleLine = true,
           modifier = Modifier
             .fillMaxWidth()
-            .testTag("manager_add_emp_password"),
-          shape = RoundedCornerShape(12.dp)
-        )
-
-        // Confirm Password
-        OutlinedTextField(
-          value = confirmPassword,
-          onValueChange = {
-            confirmPassword = it
-            localError = null
-          },
-          label = { Text("Confirm Password *") },
-          leadingIcon = {
-            Icon(Icons.Default.Lock, contentDescription = null, tint = WorkPrimary)
-          },
-          visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-          singleLine = true,
-          modifier = Modifier
-            .fillMaxWidth()
-            .testTag("manager_add_emp_confirm_password"),
+            .testTag("manager_add_emp_email"),
           shape = RoundedCornerShape(12.dp)
         )
 
         Text(
-          text = "The employee will log in using Select Team: '${manager.team}' + their Employee ID + Password.",
+          text = "Credentials are password-free. The employee will sign in securely using their email.",
           fontSize = 11.sp,
           color = Color(0xFF79747E)
         )
@@ -1825,14 +1804,12 @@ fun AddEmployeeByManagerDialog(
 
           Button(
             onClick = {
-              if (name.isBlank() || employeeId.isBlank() || password.isBlank()) {
+              if (name.isBlank() || employeeId.isBlank() || email.isBlank()) {
                 localError = "All fields are required."
-              } else if (password != confirmPassword) {
-                localError = "Passwords do not match."
-              } else if (password.length < 4) {
-                localError = "Password must be at least 4 characters."
+              } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()) {
+                localError = "Please enter a valid work email address."
               } else {
-                onCreateAccount(name, employeeId, password, confirmPassword)
+                onCreateAccount(name, employeeId, "", "")
               }
             },
             modifier = Modifier

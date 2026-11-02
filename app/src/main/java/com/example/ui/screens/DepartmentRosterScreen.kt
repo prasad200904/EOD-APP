@@ -1,5 +1,11 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.WarmCream
+import com.example.ui.theme.CoralPrimary
+import com.example.ui.theme.DarkSlateDeep
+import com.example.ui.theme.SubtleText
+import com.example.ui.theme.MintGreen
+import com.example.ui.theme.SelectedBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -62,6 +68,8 @@ fun DepartmentRosterScreen(
   todayEods: List<DailyEodEntity>,
   onSelectEmployee: (EmployeeEntity) -> Unit,
   onLogout: () -> Unit,
+  isOnline: Boolean = true,
+  pendingSyncCount: Int = 0,
   modifier: Modifier = Modifier
 ) {
   // Filter employees for this department
@@ -109,7 +117,7 @@ fun DepartmentRosterScreen(
   Box(
     modifier = modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(com.example.ui.theme.WarmCream)
   ) {
     Column(
       modifier = Modifier
@@ -127,13 +135,13 @@ fun DepartmentRosterScreen(
             text = departmentName,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = com.example.ui.theme.DarkSlateDeep
           )
           Spacer(modifier = Modifier.height(3.dp))
           Text(
             text = "$todayFormatted · Tap your name to submit",
             fontSize = 13.sp,
-            color = Color(0xFF9CA3AF)
+            color = com.example.ui.theme.SubtleText
           )
         }
 
@@ -144,7 +152,7 @@ fun DepartmentRosterScreen(
           Icon(
             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
             contentDescription = "Logout to Department Selection",
-            tint = Color(0xFF9CA3AF),
+            tint = com.example.ui.theme.SubtleText,
             modifier = Modifier.size(24.dp)
           )
         }
@@ -181,14 +189,21 @@ fun DepartmentRosterScreen(
           verticalAlignment = Alignment.CenterVertically
         ) {
           Icon(
-            imageVector = Icons.Default.CloudDone,
-            contentDescription = "Cloud Connected",
-            tint = Color(0xFF10B981),
+            imageVector = if (isOnline) Icons.Default.CloudDone else Icons.Default.CloudSync,
+            contentDescription = if (isOnline) "Online" else "Offline",
+            tint = if (isOnline) Color(0xFF10B981) else Color(0xFFF59E0B),
             modifier = Modifier.size(14.dp)
           )
           Text(
-            text = "Cloud Synced",
-            color = Color(0xFF9CA3AF),
+            text = when {
+              !isOnline && pendingSyncCount > 0 -> "Offline · $pendingSyncCount pending"
+              !isOnline -> "Offline"
+              pendingSyncCount > 0 -> "Syncing $pendingSyncCount..."
+              else -> "Cloud Synced"
+            },
+            color = if (isOnline && pendingSyncCount == 0) 
+              com.example.ui.theme.SubtleText 
+            else Color(0xFFF59E0B),
             fontSize = 11.sp
           )
         }
@@ -234,12 +249,12 @@ private fun RosterEmployeeCard(
   isSelected: Boolean,
   onClick: () -> Unit
 ) {
-  val cardBackground = if (isSelected) Color(0xFFEDE9FE) else Color(0xFF151722)
-  val borderColor = if (isSelected) Color(0xFF818CF8) else Color(0xFF232532)
-  val avatarBg = if (isSelected) Color(0xFF3730A3) else Color.White
-  val avatarTextColor = if (isSelected) Color.White else Color(0xFF3730A3)
-  val nameTextColor = if (isSelected) Color(0xFF1E1B4B) else Color.White
-  val subTextColor = if (isSelected) Color(0xFF4B5563) else Color(0xFF9CA3AF)
+  val cardBackground = if (isSelected) com.example.ui.theme.MintGreen else Color.White
+  val borderColor = if (isSelected) com.example.ui.theme.SelectedBorder else Color(0xFFE5E7EB)
+  val avatarBg = if (isSelected) com.example.ui.theme.DarkSlateDeep else com.example.ui.theme.CoralPrimary.copy(alpha = 0.15f)
+  val avatarTextColor = if (isSelected) Color.White else com.example.ui.theme.CoralPrimary
+  val nameTextColor = if (isSelected) com.example.ui.theme.DarkSlateDeep else com.example.ui.theme.DarkSlateDeep
+  val subTextColor = if (isSelected) com.example.ui.theme.SubtleText else com.example.ui.theme.SubtleText
 
   Box(
     modifier = Modifier

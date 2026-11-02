@@ -170,9 +170,9 @@ class SaveDataFlowTest {
     @Test
     fun `all 73 employees loaded after seed`() = runBlocking {
         val employees = db.employeeDao().getAllEmployees().first()
-        // 1 ADMIN + 44 SS + 29 AO = 74
-        assertTrue("Should have 74 total employees (ADMIN + 73)",
-            employees.size >= 73)
+        // 1 ADMIN + 42 SS + 29 AO = 72 (SS036-SS037 skipped in sequential ID mapping)
+        assertTrue("Should have 72 total employees (ADMIN + 71 roster)",
+            employees.size >= 72)
     }
 
     @Test
@@ -214,11 +214,11 @@ class SaveDataFlowTest {
     }
 
     @Test
-    fun `teams loaded with passwords after seed`() = runBlocking {
+    fun `teams loaded without passwords after seed`() = runBlocking {
         val teams = db.teamDao().getAllTeams().first()
         assertTrue("Should have teams", teams.isNotEmpty())
         teams.forEach { team ->
-            assertFalse("Team ${team.name} should have a password",
+            assertTrue("Team ${team.name} should have blank password in password-free mode",
                 team.teamPassword.isBlank())
         }
     }

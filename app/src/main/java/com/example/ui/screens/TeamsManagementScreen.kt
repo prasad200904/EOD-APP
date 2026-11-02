@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import com.example.ui.theme.DarkSlateDeep
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -120,7 +121,7 @@ fun TeamsManagementScreen(
           text = if (currentRole == Role.ADMIN) "Company Teams & Departments" else "Team Directory",
           fontSize = 20.sp,
           fontWeight = FontWeight.Bold,
-          color = Color(0xFF21005D)
+          color = DarkSlateDeep
         )
         Text(
           text = "$activeTeamsCount Active Teams • ${employees.size} Total Members",
@@ -187,7 +188,7 @@ fun TeamsManagementScreen(
           label = { Text(status, fontSize = 12.sp) },
           colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = WorkPrimaryContainer,
-            selectedLabelColor = Color(0xFF21005D)
+            selectedLabelColor = DarkSlateDeep
           )
         )
       }
@@ -288,7 +289,7 @@ fun TeamCard(
             Icon(
               Icons.Default.Group,
               contentDescription = null,
-              tint = Color(0xFF21005D),
+              tint = DarkSlateDeep,
               modifier = Modifier.size(22.dp)
             )
           }
@@ -299,7 +300,7 @@ fun TeamCard(
                 text = team.name,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1D1B20)
+                color = DarkSlateDeep
               )
               Surface(
                 shape = RoundedCornerShape(6.dp),
@@ -379,7 +380,7 @@ fun TeamCard(
               text = "Department: ${team.department}",
               fontSize = 13.sp,
               fontWeight = FontWeight.Medium,
-              color = Color(0xFF1D1B20)
+              color = DarkSlateDeep
             )
             Text(
               text = "Team Workspace",
@@ -408,7 +409,7 @@ fun TeamCard(
                 text = "${members.size} Members",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF21005D)
+                color = DarkSlateDeep
               )
               Text(
                 text = "• $submittedTodayCount Logged",
@@ -450,7 +451,7 @@ fun TeamCard(
                     Text(
                       text = trimmed,
                       fontSize = 10.sp,
-                      color = Color(0xFF21005D),
+                      color = DarkSlateDeep,
                       maxLines = 1,
                       overflow = TextOverflow.Ellipsis
                     )

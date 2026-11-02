@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Implement automatic upload of seed employees to Firestore on first login, and add validation to detect failed syncs. This ensures Firestore /employees collection is populated so subsequent reads return data. Also adds error detection: if local DB has employees but Firestore fetch returns zero, return failure (not silent success) to alert user/UI of the sync problem.",
+  "status": "pending",
+  "steps": [
+    "Modify WorkCoreRepository.syncEmployeesFromFirebase() (around line 1386) to add authentication check at start: verify firebaseDataSource.currentUser != null, else fail with clear error",
+    "In syncEmployeesFromFirebase(), after fetchEmployees() succeeds, add logic to detect first sync: if local DB has employees but fetchResult returns empty list, call firebaseDataSource.uploadAllEmployeesToFirestore(allLocalEmployees) to upload seed data",
+    "Add SharedPreferences flag to track if upload already happened, preventing duplicate uploads on subsequent logins (use key 'employees_uploaded_to_firebase')",
+    "Modify the empty check: if employees.isEmpty(), check if local DB is also empty. If local has data but cloud is empty, return Result.failure() (not success). Log clear error message about possible security rule issue.",
+    "Verify existing uploadAllEmployeesToFirestore() method in FirebaseDataSource.kt (line ~750+) works correctly: logs batch progress, catches individual errors, returns upload count",
+    "Add comprehensive logging at each step: 'Firebase Auth not initialized', 'First sync detected: uploading...', 'Uploaded X employees to Firestore', 'Empty fetch detected but local has Y employees: possible security rule issue'"
+  ],
+  "acceptance_criteria": [
+    "First login after app install automatically uploads local seed employees to Firestore (logged as 'First sync detected')",
+    "Upload only happens once (tracked by SharedPreferences flag)",
+    "If Firestore fetch returns zero but local DB has employees, syncEmployeesFromFirebase() returns Result.failure() (not success)",
+    "Logs clearly distinguish between: (1) first sync, (2) empty cloud during first sync, (3) normal sync, (4) sync blocked by auth or security rules",
+    "Firebase Auth check prevents null pointer exceptions"
+  ],
+  "verification": [
+    "Build and install fresh app: ./gradlew installDebug",
+    "Login as admin, check logcat for 'First sync detected: uploading local employees to Firestore...'",
+    "Check logcat for 'Successfully uploaded 73 employees to Firestore' (or count from SeedData)",
+    "Open Firebase Console Firestore > employees collection, verify documents are present",
+    "Login again as same user, verify logcat does NOT show second upload (SharedPreferences flag prevents it)",
+    "Clear SharedPreferences flag manually, login again, verify upload happens again (proves flag works)",
+    "Temporarily disable FEAT-001 (revert rules), login as admin, verify sync fails with 'Possible security rule issue' error message (not silent success)",
+    "Verify other login flows (SS employee, AO employee) also trigger sync and fetch employees successfully"
+  ],
+  "blocked_reason": null,
+  "findings": "FirebaseDataSource.uploadAllEmployeesToFirestore() already implemented but never called. SeedData has 73 real employees that should be available immediately. Current syncEmployeesFromFirebase() logs empty fetch as warning but returns success, preventing error detection. Solution: Call upload on first sync, add validation to detect sync failures."
+}

@@ -50,6 +50,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -60,7 +61,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.window.Dialog
 import com.example.ui.screens.TodayScreen
-import com.example.ui.screens.SimpleEodFormScreen
 import com.example.ui.screens.DepartmentRosterScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.UpdateAvailableDialog
@@ -91,17 +91,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Role
+import com.example.data.TeamMemberDataEntity
+import com.example.data.TeamType
 import com.example.ui.screens.AddEmployeeByManagerDialog
 import com.example.ui.screens.AddEmployeeScreen
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.AdminDashboardScreen
+import com.example.ui.screens.AdminHistoryScreen
 import com.example.ui.screens.CreateOrEditTeamDialog
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.DownloadEodScreen
 import com.example.ui.screens.EmployeeDetailDialog
 import com.example.ui.screens.ExportReportDialog
 import com.example.ui.screens.LoginScreen
-import com.example.ui.screens.CreateAdminAccountScreen
 import com.example.ui.screens.AddTeamScreen
 import com.example.ui.screens.TeamHistoryScreen
 import com.example.ui.screens.MoveEmployeeDialog
@@ -112,6 +114,12 @@ import com.example.ui.screens.SimpleEmployeesScreen
 import com.example.ui.screens.SubmitEodDialog
 import com.example.ui.screens.TeamsManagementScreen
 import com.example.ui.screens.WorkMonitorScreen
+import com.example.ui.screens.CounsellorEodFormScreen
+import com.example.ui.screens.TelecallingEodFormScreen
+import com.example.ui.screens.MarketingEodFormScreen
+import com.example.ui.screens.SimpleEodFormScreen
+import com.example.ui.screens.AcademicOverseasSignInScreen
+import com.example.ui.screens.AORosterDashboardScreen
 import com.example.ui.viewmodel.AuthSession
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.WorkBackground
@@ -161,13 +169,17 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
   val dailyEods by viewModel.dailyEods.collectAsState()
   val visibleDailyEods by viewModel.visibleDailyEods.collectAsState()
   val teams by viewModel.teams.collectAsState()
+  val companies by viewModel.companies.collectAsState()
   val notifications by viewModel.notifications.collectAsState()
   val unreadNotificationsCount by viewModel.unreadNotificationsCount.collectAsState()
+  val isOnline by viewModel.isOnline.collectAsState()
+  val pendingSyncCount by viewModel.pendingSyncCount.collectAsState()
 
   val summary by viewModel.dashboardSummary.collectAsState()
   val monitorItems by viewModel.workMonitorItems.collectAsState()
   val behaviorMetrics by viewModel.behaviorMetrics.collectAsState()
   val teamSummaries by viewModel.teamAnalytics.collectAsState()
+  val teamReports by viewModel.teamReports.collectAsState()
 
   val monitorFilter by viewModel.monitorFilter.collectAsState()
   val teamDeptFilter by viewModel.teamDepartmentFilter.collectAsState()
@@ -194,6 +206,7 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
 
   val departments by viewModel.departments.collectAsState()
   val selectedDepartmentCode by viewModel.selectedDepartmentCode.collectAsState()
+  val selectedCompanyId by viewModel.selectedCompanyId.collectAsState()
   val managerTeamMembers by viewModel.managerTeamMembers.collectAsState()
   var showAddEmployeeScreen by remember { mutableStateOf(false) }
   var showAddTeamScreen by remember { mutableStateOf(false) }
@@ -267,7 +280,7 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
   Scaffold(
     modifier = Modifier
       .fillMaxSize()
-      .background(EodDarkBackground)
+      .background(com.example.ui.theme.WarmCream)
       .statusBarsPadding()
       .navigationBarsPadding(),
     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -303,7 +316,7 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
                 currentManager = authSession?.employee,
                 allDepartments = departments,
                 onBackClick = { showAddEmployeeScreen = false },
-                onCreateAccount = { name, email, code, joiningDate, designation, deptCode, sendLink ->
+                onCreateAccount = { name, email, code, joiningDate, designation, deptCode, sendLink, teamSpecificData ->
                   viewModel.createEmployeeScoped(
                     name = name,
                     email = email,
@@ -312,6 +325,7 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
                     designation = designation,
                     departmentCode = deptCode,
                     sendEmailLink = sendLink,
+                    teamSpecificData = teamSpecificData,
                     onSuccess = {
                       showAddEmployeeScreen = false
                     }
@@ -325,8 +339,11 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
 
               AdminDashboardScreen(
                 allDepartments = departments,
+                allCompanies = companies,
                 selectedDepartmentCode = selectedDepartmentCode,
+                selectedCompanyId = selectedCompanyId,
                 onDepartmentSelect = { viewModel.selectedDepartmentCode.value = it },
+                onCompanySelect = { viewModel.selectedCompanyId.value = it },
                 teamMembers = managerTeamMembers,
                 submittedCount = submittedToday,
                 totalCount = totalTeam,
@@ -335,77 +352,145 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
                 onAvatarClick = { showProfileDialog = true },
                 onSendNudge = { emp ->
                   viewModel.snackbarMessage.value = "Nudge notification sent to ${emp.name}."
-                },
-                onAddEmployeeClick = { showAddEmployeeScreen = true },
-                onAddTeamClick = { showAddTeamScreen = true }
+                }
               )
             } else {
               val activeEmp by viewModel.activeRosterEmployee.collectAsState()
               if (activeEmp != null) {
-                // Use the new Simple EOD Form
-                SimpleEodFormScreen(
-                  currentEmployee = activeEmp,
-                  onSubmit = { projectTitle, description, status ->
-                    // Get current date from repository
-                    val currentDate = viewModel.repository.getTodayDateString()
-                    
-                    // Map the simple form data to submitRosterEod parameters
-                    viewModel.submitRosterEod(
-                      employee = activeEmp!!,
-                      date = currentDate,
-                      project = projectTitle,
-                      taskDescription = description,
-                      hoursWorked = 8.0, // Default full day
-                      progressPercentage = when (status) {
-                        "Completed" -> 100
-                        "In Progress" -> 50
-                        "Blocked" -> 0
-                        else -> 50
-                      },
-                      workStatus = status,
-                      onComplete = {
+                // Route to custom EOD form based on team's eodFormType OR employee's department
+                val team = teams.firstOrNull { it.teamId == activeEmp?.teamId }
+                var formType = team?.eodFormType ?: "STANDARD"
+                
+                // Fallback: Check employee department for AO roles
+                if (formType == "STANDARD" && activeEmp?.companyId == "COMP_AO") {
+                  formType = when (activeEmp?.department) {
+                    "Marketing" -> "MARKETING"
+                    "Counsellor" -> "COUNSELLOR"
+                    "Tele Caller" -> "TELECALLING"
+                    else -> "STANDARD"
+                  }
+                }
+                
+                when (formType) {
+                  "COUNSELLOR" -> {
+                    CounsellorEodFormScreen(
+                      employeeName = activeEmp?.name ?: "",
+                      onSubmit = { customFormData ->
+                        viewModel.submitCustomEod(
+                          employee = activeEmp!!,
+                          date = java.time.LocalDate.now().toString(),
+                          customFormData = customFormData
+                        )
                         viewModel.closeRosterEmployee()
-                      }
+                      },
+                      onCancel = { viewModel.closeRosterEmployee() }
                     )
-                  },
-                  onBackClick = { viewModel.closeRosterEmployee() }
-                )
+                  }
+                  "TELECALLING" -> {
+                    TelecallingEodFormScreen(
+                      employeeName = activeEmp?.name ?: "",
+                      onSubmit = { customFormData ->
+                        viewModel.submitCustomEod(
+                          employee = activeEmp!!,
+                          date = java.time.LocalDate.now().toString(),
+                          customFormData = customFormData
+                        )
+                        viewModel.closeRosterEmployee()
+                      },
+                      onCancel = { viewModel.closeRosterEmployee() }
+                    )
+                  }
+                  "MARKETING" -> {
+                    MarketingEodFormScreen(
+                      employeeName = activeEmp?.name ?: "",
+                      onSubmit = { customFormData ->
+                        viewModel.submitCustomEod(
+                          employee = activeEmp!!,
+                          date = java.time.LocalDate.now().toString(),
+                          customFormData = customFormData
+                        )
+                        viewModel.closeRosterEmployee()
+                      },
+                      onCancel = { viewModel.closeRosterEmployee() }
+                    )
+                  }
+                  "SIMPLE" -> {
+                    SimpleEodFormScreen(
+                      employeeName = activeEmp?.name ?: "",
+                      onSubmit = { customFormData ->
+                        viewModel.submitCustomEod(
+                          employee = activeEmp!!,
+                          date = java.time.LocalDate.now().toString(),
+                          customFormData = customFormData
+                        )
+                        viewModel.closeRosterEmployee()
+                      },
+                      onCancel = { viewModel.closeRosterEmployee() }
+                    )
+                  }
+                  else -> {
+                    // STANDARD form - Use SubmitEodDialog
+                    viewModel.openSubmitEod(null)
+                    viewModel.closeRosterEmployee()
+                  }
+                }
               } else {
                 val currentDept = authSession?.departmentTeam ?: "GT Team"
-                DepartmentRosterScreen(
-                  departmentName = currentDept,
-                  employees = employees,
-                  todayEods = dailyEods,
-                  onSelectEmployee = { emp ->
-                    viewModel.selectRosterEmployee(emp)
-                  },
-                  onLogout = {
-                    viewModel.logout()
-                  }
-                )
+                
+                // Check if this is an AO role
+                val isAORole = currentDept in listOf("Marketing", "Counsellor", "Tele Caller")
+                
+                if (isAORole) {
+                  // AO Roster Dashboard
+                  AORosterDashboardScreen(
+                    role = currentDept,
+                    employees = employees,
+                    todayEods = dailyEods,
+                    onEmployeeClick = { emp ->
+                      viewModel.selectRosterEmployee(emp)
+                    },
+                    onLogout = {
+                      viewModel.logout()
+                    }
+                  )
+                } else {
+                  // Regular Department Roster
+                  DepartmentRosterScreen(
+                    departmentName = currentDept,
+                    employees = employees,
+                    todayEods = dailyEods,
+                    onSelectEmployee = { emp ->
+                      viewModel.selectRosterEmployee(emp)
+                    },
+                    onLogout = {
+                      viewModel.logout()
+                    },
+                    isOnline = isOnline,
+                    pendingSyncCount = pendingSyncCount
+                  )
+                }
               }
             }
           }
           AppTab.EOD_HISTORY -> {
             if (currentRole == Role.ADMIN) {
-              TeamHistoryScreen(
-                currentManager = authSession?.employee,
-                allDepartments = departments,
-                selectedDepartmentCode = selectedDepartmentCode,
-                onDepartmentSelect = { viewModel.selectedDepartmentCode.value = it },
-                teamMembers = managerTeamMembers,
+              AdminHistoryScreen(
+                employees = employees,
                 eods = dailyEods,
-                onAvatarClick = { showProfileDialog = true },
-                onLogout = { viewModel.logout() }
+                onAvatarClick = { showProfileDialog = true }
               )
             } else {
-              val currentDeptName = authSession?.departmentTeam ?: "GT Team"
-              val deptCode = if (currentDeptName.contains("GT", ignoreCase = true)) "GT"
-                else if (currentDeptName.contains("ML", ignoreCase = true)) "ML"
-                else if (currentDeptName.contains("DB", ignoreCase = true)) "DB"
-                else if (currentDeptName.contains("Writing", ignoreCase = true)) "Writing"
-                else if (currentDeptName.contains("Cyber", ignoreCase = true)) "Cyber"
-                else "GT"
+               val currentDeptName = authSession?.departmentTeam ?: "GT Team"
+               val deptCode = if (currentDeptName.contains("GT", ignoreCase = true)) "GT"
+                 else if (currentDeptName.contains("ML", ignoreCase = true)) "ML"
+                 else if (currentDeptName.contains("DB", ignoreCase = true)) "DB"
+                 else if (currentDeptName.contains("Writing", ignoreCase = true)) "Writing"
+                 else if (currentDeptName.contains("Cyber", ignoreCase = true)) "Cyber"
+                 else if (currentDeptName.contains("Counselling", ignoreCase = true) || currentDeptName.contains("Counseling", ignoreCase = true)) "COUNSEL"
+                 else if (currentDeptName.contains("Telecalling", ignoreCase = true)) "TELECALL"
+                 else if (currentDeptName.contains("Marketing", ignoreCase = true)) "MKT"
+                 else if (currentDeptName.contains("Other", ignoreCase = true)) "OTHER"
+                 else "GT"
 
               val gtMembers = remember(employees, dailyEods, deptCode) {
                 viewModel.repository.computeManagerTeamMetrics(deptCode, employees, dailyEods)
@@ -449,6 +534,7 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
               showAddEmployeeScreen = true
               viewModel.setTab(AppTab.DASHBOARD)
             },
+            onAddTeamClick = { showAddTeamScreen = true },
             onToggleEmployeeActive = { empId, currentActive ->
               viewModel.toggleEmployeeActiveStatus(empId, currentActive)
             },
@@ -479,6 +565,7 @@ fun WorkCoreApp(viewModel: WorkCoreViewModel) {
           AppTab.ANALYTICS -> AnalyticsScreen(
             behaviorMetrics = behaviorMetrics,
             teamSummaries = teamSummaries,
+            teamReports = teamReports,
             departmentFilter = teamDeptFilter,
             onDepartmentFilterChange = { viewModel.teamDepartmentFilter.value = it },
             onSelectEmployee = { emp -> viewModel.selectedEmployeeForDetail.value = emp }
@@ -852,6 +939,7 @@ fun WorkCoreTopBar(
                   .background(
                     when (currentRole) {
                       Role.ADMIN -> Color(0xFFB3261E)
+                      Role.MANAGER -> Color(0xFF1565C0)
                       Role.EMPLOYEE -> Color(0xFF1D6C2F)
                     }
                   )
@@ -859,6 +947,7 @@ fun WorkCoreTopBar(
               Text(
                 text = when (currentRole) {
                   Role.ADMIN -> "Admin"
+                  Role.MANAGER -> "Manager"
                   Role.EMPLOYEE -> "Employee"
                 },
                 fontSize = 11.sp,

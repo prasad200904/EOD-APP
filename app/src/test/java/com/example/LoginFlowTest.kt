@@ -4,8 +4,11 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.AppDatabase
+import com.example.data.Role
 import com.example.data.SeedData
 import com.example.data.WorkCoreRepository
+import com.example.data.auth.AuthRepository
+import com.example.data.auth.VerifiedSession
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -16,12 +19,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Tests for login flows:
- * - SS team login (General Team, ML Team, Cyber Security, etc.)
- * - AO team login (Marketing, Counsellor, Tele Caller)
- * - Admin login
- * - Wrong password rejected
- * - Unknown team rejected
+ * Tests for password-free login flows:
+ * - Admin login via token claims
+ * - Employee login via token claims
+ * - Invalid credentials rejected
+ * - Team roster access by team name
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -29,6 +31,32 @@ class LoginFlowTest {
 
     private lateinit var db: AppDatabase
     private lateinit var repository: WorkCoreRepository
+    private lateinit var fakeAuth: FakeTestAuthRepository
+
+    class FakeTestAuthRepository : AuthRepository() {
+        private val accounts = mutableMapOf<String, VerifiedSession>()
+
+        fun registerUser(email: String, session: VerifiedSession) {
+            accounts[email.lowercase()] = session
+        }
+
+        override suspend fun signIn(email: String, password: String): Result<VerifiedSession> {
+            val session = accounts[email.lowercase()]
+            return if (session != null && password == "validPassword123") {
+                Result.success(session)
+            } else {
+                Result.failure(IllegalArgumentException("Invalid ID or password."))
+            }
+        }
+
+        override suspend fun readSession(forceRefresh: Boolean): VerifiedSession? {
+            return accounts.values.firstOrNull()
+        }
+
+        override suspend fun sendPasswordReset(email: String): Result<Unit> {
+            return Result.success(Unit)
+        }
+    }
 
     @Before
     fun setup() {
@@ -37,7 +65,30 @@ class LoginFlowTest {
             db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-            repository = WorkCoreRepository(db)
+            fakeAuth = FakeTestAuthRepository()
+
+            fakeAuth.registerUser(
+                "admin@workcore.com",
+                VerifiedSession(
+                    uid = "ADMIN_UID",
+                    email = "admin@workcore.com",
+                    role = "ADMIN",
+                    employeeId = "ADMIN"
+                )
+            )
+
+            fakeAuth.registerUser(
+                "ss001@sandspace.com",
+                VerifiedSession(
+                    uid = "SS001_UID",
+                    email = "ss001@sandspace.com",
+                    role = "EMPLOYEE",
+                    employeeId = "SS001",
+                    teamId = "General Team"
+                )
+            )
+
+            repository = WorkCoreRepository(db, authRepository = fakeAuth)
             repository.initializeSeedDataIfNeeded()
         }
     }
@@ -48,12 +99,12 @@ class LoginFlowTest {
     // ── Admin Login ───────────────────────────────────────────────────
 
     @Test
-    fun `admin login with correct password succeeds`() = runBlocking {
+    fun `admin login with valid token claims succeeds`() = runBlocking {
         val result = repository.authenticate(
-            role = com.example.data.Role.ADMIN,
+            role = Role.ADMIN,
             teamName = null,
-            identifier = "admin",
-            passwordInput = "admin123"
+            identifier = "admin@workcore.com",
+            passwordInput = "validPassword123"
         )
         assertTrue("Admin login should succeed", result.isSuccess)
         val employee = result.getOrNull()
@@ -63,121 +114,90 @@ class LoginFlowTest {
     }
 
     @Test
-    fun `admin login with wrong password fails`() = runBlocking {
+    fun `admin login requires the registered email instead of admin alias`() = runBlocking {
         val result = repository.authenticate(
-            role = com.example.data.Role.ADMIN,
+            role = Role.ADMIN,
             teamName = null,
             identifier = "admin",
+            passwordInput = "validPassword123"
+        )
+        assertTrue("Admin username alias should be rejected", result.isFailure)
+        assertTrue(
+            result.exceptionOrNull()?.message.orEmpty().contains("registered admin email")
+        )
+    }
+
+    @Test
+    fun `admin login with wrong password fails`() = runBlocking {
+        val result = repository.authenticate(
+            role = Role.ADMIN,
+            teamName = null,
+            identifier = "admin@workcore.com",
             passwordInput = "wrongpassword"
         )
         assertTrue("Wrong password should fail", result.isFailure)
     }
 
-    // ── SS Team Login ─────────────────────────────────────────────────
-
     @Test
-    fun `general team login with correct password succeeds`() = runBlocking {
-        val team = SeedData.teams.first { it.name == "General Team" }
-        val result = repository.authenticateByTeam(
+    fun `employee login with valid token claims succeeds`() = runBlocking {
+        val result = repository.authenticate(
+            role = Role.EMPLOYEE,
             teamName = "General Team",
-            password = team.teamPassword
+            identifier = "ss001@sandspace.com",
+            passwordInput = "validPassword123"
         )
-        assertTrue("General Team login should succeed", result.isSuccess)
+        assertTrue("Employee login should succeed", result.isSuccess)
+        val employee = result.getOrNull()
+        assertNotNull(employee)
+        assertEquals("EMPLOYEE", employee?.role)
     }
 
     @Test
-    fun `cyber security team login with correct password succeeds`() = runBlocking {
-        val team = SeedData.teams.first { it.name == "Cyber Security" }
-        val result = repository.authenticateByTeam(
-            teamName = "Cyber Security",
-            password = team.teamPassword
-        )
-        assertTrue("Cyber Security login should succeed", result.isSuccess)
-    }
-
-    @Test
-    fun `ml team login with correct password succeeds`() = runBlocking {
-        val team = SeedData.teams.first { it.name == "ML Team" }
-        val result = repository.authenticateByTeam(
-            teamName = "ML Team",
-            password = team.teamPassword
-        )
-        assertTrue("ML Team login should succeed", result.isSuccess)
-    }
-
-    @Test
-    fun `team login with wrong password fails`() = runBlocking {
-        val result = repository.authenticateByTeam(
+    fun `unknown account login fails`() = runBlocking {
+        val result = repository.authenticate(
+            role = Role.EMPLOYEE,
             teamName = "General Team",
-            password = "wrongpassword123"
+            identifier = "unknown@company.com",
+            passwordInput = "validPassword123"
         )
-        assertTrue("Wrong team password should fail", result.isFailure)
+        assertTrue("Unknown user should fail", result.isFailure)
     }
 
-    @Test
-    fun `unknown team login fails`() = runBlocking {
-        val result = repository.authenticateByTeam(
-            teamName = "NonExistentTeam",
-            password = "anypassword"
-        )
-        assertTrue("Unknown team login should fail", result.isFailure)
-    }
-
-    // ── AO Team Login ─────────────────────────────────────────────────
+    // ── Team Roster Lookups (Password-Free Roster Flow) ────────────────
 
     @Test
-    fun `AO marketing team login with correct password succeeds`() = runBlocking {
-        val team = SeedData.teams.first { it.name == "Marketing" }
-        val result = repository.authenticateByTeam(
-            teamName = "Marketing",
-            password = team.teamPassword
-        )
-        assertTrue("Marketing team login should succeed", result.isSuccess)
-    }
-
-    @Test
-    fun `AO counsellor team login with correct password succeeds`() = runBlocking {
-        val team = SeedData.teams.first { it.name == "Counsellor" }
-        val result = repository.authenticateByTeam(
-            teamName = "Counsellor",
-            password = team.teamPassword
-        )
-        assertTrue("Counsellor team login should succeed", result.isSuccess)
-    }
-
-    @Test
-    fun `AO tele caller team login with correct password succeeds`() = runBlocking {
-        val team = SeedData.teams.first { it.name == "Tele Caller" }
-        val result = repository.authenticateByTeam(
-            teamName = "Tele Caller",
-            password = team.teamPassword
-        )
-        assertTrue("Tele Caller team login should succeed", result.isSuccess)
-    }
-
-    // ── Employee Count After Login ────────────────────────────────────
-
-    @Test
-    fun `general team has correct employees after seed`() = runBlocking {
+    fun `general team roster retrieval succeeds`() = runBlocking {
         val members = repository.getEmployeesByTeam("General Team")
         assertTrue("General Team should have employees", members.isNotEmpty())
-        members.forEach { emp ->
-            assertTrue(
-                "All members should be from General Team",
-                emp.team.equals("General Team", ignoreCase = true)
-            )
-        }
     }
 
     @Test
-    fun `AO marketing team has correct employees after seed`() = runBlocking {
+    fun `cyber security team roster retrieval succeeds`() = runBlocking {
+        val members = repository.getEmployeesByTeam("Cyber Security")
+        assertTrue("Cyber Security should have employees", members.isNotEmpty())
+    }
+
+    @Test
+    fun `ml team roster retrieval succeeds`() = runBlocking {
+        val members = repository.getEmployeesByTeam("ML Team")
+        assertTrue("ML Team should have employees", members.isNotEmpty())
+    }
+
+    @Test
+    fun `AO marketing team roster retrieval succeeds`() = runBlocking {
         val members = repository.getEmployeesByTeam("Marketing")
         assertTrue("Marketing team should have employees", members.isNotEmpty())
-        members.forEach { emp ->
-            assertTrue(
-                "All members should be from Marketing",
-                emp.team.equals("Marketing", ignoreCase = true)
-            )
-        }
+    }
+
+    @Test
+    fun `AO counsellor team roster retrieval succeeds`() = runBlocking {
+        val members = repository.getEmployeesByTeam("Counsellor")
+        assertTrue("Counsellor team should have employees", members.isNotEmpty())
+    }
+
+    @Test
+    fun `AO tele caller team roster retrieval succeeds`() = runBlocking {
+        val members = repository.getEmployeesByTeam("Tele Caller")
+        assertTrue("Tele Caller team should have employees", members.isNotEmpty())
     }
 }

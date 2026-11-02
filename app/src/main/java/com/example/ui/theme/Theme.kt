@@ -8,6 +8,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 
+// NEW: Warm Gradient Light Theme
+private val WarmGradientLightScheme =
+  lightColorScheme(
+    primary = CoralPrimary,
+    onPrimary = Color.White,
+    primaryContainer = CoralLight,
+    onPrimaryContainer = DarkSlateDeep,
+    secondary = DarkSlate,
+    onSecondary = Color.White,
+    secondaryContainer = MintGreen,
+    onSecondaryContainer = DarkSlateDeep,
+    tertiary = WarmBlue,
+    onTertiary = Color.White,
+    tertiaryContainer = WarmCream,
+    onTertiaryContainer = DarkSlateDeep,
+    background = WarmCream,
+    onBackground = DarkSlateDeep,
+    surface = Color.White,
+    onSurface = DarkSlateDeep,
+    surfaceVariant = WarmCream,
+    onSurfaceVariant = SubtleText,
+    outline = Color(0xFFD1D5DB),
+    outlineVariant = Color(0xFFE5E7EB),
+    error = Color(0xFFEF4444),
+    onError = Color.White,
+    errorContainer = Color(0xFFFEE2E2),
+    onErrorContainer = Color(0xFFDC2626),
+  )
+
+// Legacy: Keep dark theme for backward compatibility
 private val ExactObsidianColorScheme =
   darkColorScheme(
     primary = EodPrimaryPurple,
@@ -38,10 +68,11 @@ private val ExactObsidianColorScheme =
 
 @Composable
 fun MyApplicationTheme(
-  darkTheme: Boolean = true,
+  darkTheme: Boolean = false, // Changed default to light theme
   dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
-  MaterialTheme(colorScheme = ExactObsidianColorScheme, typography = Typography, content = content)
+  // Use warm gradient light theme by default
+  MaterialTheme(colorScheme = WarmGradientLightScheme, typography = Typography, content = content)
 }
 
