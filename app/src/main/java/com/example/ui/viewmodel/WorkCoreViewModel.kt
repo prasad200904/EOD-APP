@@ -514,21 +514,12 @@ class WorkCoreViewModel(application: Application) : AndroidViewModel(application
         "AO" else "SS"
       com.example.util.Analytics.logLogin(team = team.name, company = company)
 
-      // AUTO-SYNC: Fetch employees from Firebase after roster selection
-      launch {
-        android.util.Log.d("WorkCoreAuth", "Auto-syncing employees from Firebase...")
-        val syncResult = repository.syncEmployeesFromFirebase()
-        syncResult.fold(
-          onSuccess = { count ->
-            if (count > 0) {
-              android.util.Log.i("WorkCoreAuth", "Synced $count employees from Firebase")
-            }
-          },
-          onFailure = { error ->
-            android.util.Log.w("WorkCoreAuth", "Sync failed: ${error.message}")
-          }
-        )
-      }
+      // NOTE: Do NOT sync for password-free team login because:
+      // 1. Firebase Auth is not initialized (no email/password provided)
+      // 2. SyncManager will fail and block further operations
+      // 3. Local seed data is sufficient for roster display
+      // Firebase sync only makes sense for email-based admin/employee logins
+      android.util.Log.d("WorkCoreAuth", "✅ Team login successful - using local seed data (no Firebase sync for password-free mode)")
 
       onResult(true, null)
     }
