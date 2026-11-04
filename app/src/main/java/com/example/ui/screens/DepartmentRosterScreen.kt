@@ -75,25 +75,42 @@ fun DepartmentRosterScreen(
   // Filter employees for this department
   val deptEmployees = remember(employees, departmentName) {
     android.util.Log.d("DepartmentRoster", "=== FILTERING EMPLOYEES ===")
-    android.util.Log.d("DepartmentRoster", "Department Name: '$departmentName'")
-    android.util.Log.d("DepartmentRoster", "Total Employees: ${employees.size}")
-    android.util.Log.d("DepartmentRoster", "All employee teams: ${employees.map { "${it.name} -> ${it.team}" }}")
+    android.util.Log.d("DepartmentRoster", "Department Name Input: '$departmentName' (type: ${departmentName?.javaClass?.simpleName})")
+    android.util.Log.d("DepartmentRoster", "Total Employees Passed: ${employees.size}")
+    
+    if (employees.isEmpty()) {
+      android.util.Log.e("DepartmentRoster", "❌ CRITICAL: employees list is EMPTY!")
+    } else {
+      android.util.Log.d("DepartmentRoster", "✅ Employees list has ${employees.size} items")
+      android.util.Log.d("DepartmentRoster", "First 5 employees by team:")
+      employees.take(5).forEach { emp ->
+        android.util.Log.d("DepartmentRoster", "  [${emp.role}] ${emp.name} -> team='${emp.team}' dept='${emp.department}'")
+      }
+    }
     
     val filtered = employees.filter { emp ->
-      emp.role == "EMPLOYEE" && (
-        emp.team.equals(departmentName, ignoreCase = true) ||
-        emp.department.equals(departmentName, ignoreCase = true) ||
+      val roleMatch = emp.role == "EMPLOYEE"
+      val teamMatch = emp.team.equals(departmentName, ignoreCase = true)
+      val deptMatch = emp.department.equals(departmentName, ignoreCase = true)
+      val anyMatch = roleMatch && (
+        teamMatch ||
+        deptMatch ||
         (departmentName.startsWith("GT", true) && (emp.department.equals("GT", true) || emp.team.contains("GT", true))) ||
         (departmentName.startsWith("ML", true) && (emp.department.equals("ML", true) || emp.team.contains("ML", true))) ||
         (departmentName.startsWith("DB", true) && (emp.department.equals("DB", true) || emp.team.contains("DB", true))) ||
         (departmentName.contains("Cyber", true) && (emp.department.contains("Cyber", true) || emp.team.contains("Cyber", true))) ||
         (departmentName.contains("Writing", true) && (emp.department.contains("Writing", true) || emp.team.contains("Writing", true)))
       )
+      
+      if (anyMatch) {
+        android.util.Log.d("DepartmentRoster", "✓ MATCH: ${emp.name} (${emp.employeeId}) - team='${emp.team}' matches '$departmentName'")
+      }
+      anyMatch
     }.sortedBy { it.employeeId }
     
-    android.util.Log.d("DepartmentRoster", "Filtered Employees: ${filtered.size}")
-    filtered.forEach { emp ->
-      android.util.Log.d("DepartmentRoster", "  - ${emp.name} (${emp.employeeId}) team=${emp.team} dept=${emp.department}")
+    android.util.Log.i("DepartmentRoster", "🔍 FILTER RESULT: ${filtered.size} employees match '$departmentName' out of ${employees.size} total")
+    if (filtered.isEmpty()) {
+      android.util.Log.w("DepartmentRoster", "⚠️ No employees found for '$departmentName'!")
     }
     
     filtered
